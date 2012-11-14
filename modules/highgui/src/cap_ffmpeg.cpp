@@ -46,7 +46,6 @@
 #else
 #include "cap_ffmpeg_api.hpp"
 #endif
-#include <android/log.h>
 
 static CvCreateFileCapture_Plugin icvCreateFileCapture_FFMPEG_p = 0;
 static CvReleaseCapture_Plugin icvReleaseCapture_FFMPEG_p = 0;
@@ -114,25 +113,15 @@ icvInitFFMPEG(void)
 #endif
         }
     #elif defined HAVE_FFMPEG
-	__android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "HAVE_FFMPEG and plugging in video write hooks");
         icvCreateFileCapture_FFMPEG_p = (CvCreateFileCapture_Plugin)cvCreateFileCapture_FFMPEG;
-	if (icvCreateFileCapture_FFMPEG_p) __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "icvCreateFileCapture_FFMPEG_p");
         icvReleaseCapture_FFMPEG_p = (CvReleaseCapture_Plugin)cvReleaseCapture_FFMPEG;
-	if (icvReleaseCapture_FFMPEG_p) __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "icvReleaseCapture_FFMPEG_p");
         icvGrabFrame_FFMPEG_p = (CvGrabFrame_Plugin)cvGrabFrame_FFMPEG;
-	if (icvGrabFrame_FFMPEG_p) __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "icvGrabFrame_FFMPEG_p");
         icvRetrieveFrame_FFMPEG_p = (CvRetrieveFrame_Plugin)cvRetrieveFrame_FFMPEG;
-	if (icvRetrieveFrame_FFMPEG_p) __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "icvRetrieveFrame_FFMPEG_p");
         icvSetCaptureProperty_FFMPEG_p = (CvSetCaptureProperty_Plugin)cvSetCaptureProperty_FFMPEG;
-	if (icvSetCaptureProperty_FFMPEG_p) __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "icvSetCaptureProperty_FFMPEG_p");
         icvGetCaptureProperty_FFMPEG_p = (CvGetCaptureProperty_Plugin)cvGetCaptureProperty_FFMPEG;
-	if (icvGetCaptureProperty_FFMPEG_p) __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "icvGetCaptureProperty_FFMPEG_p");
         icvCreateVideoWriter_FFMPEG_p = (CvCreateVideoWriter_Plugin)cvCreateVideoWriter_FFMPEG;
-	if (icvCreateVideoWriter_FFMPEG_p) __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "icvCreateVideoWriter_FFMPEG_p");
         icvReleaseVideoWriter_FFMPEG_p = (CvReleaseVideoWriter_Plugin)cvReleaseVideoWriter_FFMPEG;
-	if (icvReleaseVideoWriter_FFMPEG_p) __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "icvReleaseVideoWriter_FFMPEG_p");
         icvWriteFrame_FFMPEG_p = (CvWriteFrame_Plugin)cvWriteFrame_FFMPEG;
-	if (icvWriteFrame_FFMPEG_p) __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "icvWriteFrame_FFMPEG_p");
     #endif
 
         ffmpegInitialized = 1;
@@ -173,16 +162,11 @@ public:
     virtual bool open( const char* filename )
     {
         close();
-	__android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "we are here -1");
 
         icvInitFFMPEG();
-	__android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "we are here 2");
 
-        if( !icvCreateFileCapture_FFMPEG_p ) {
-	  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "we are here 4 BAD");
+        if( !icvCreateFileCapture_FFMPEG_p )
             return false;
-	}
-	__android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "we are here 3");
 
         ffmpegCapture = icvCreateFileCapture_FFMPEG_p( filename );
         return ffmpegCapture != 0;
@@ -232,16 +216,12 @@ public:
     }
     virtual bool open( const char* filename, int fourcc, double fps, CvSize frameSize, bool isColor )
     {
-         __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "atleast we are here 0232");
         close();
         icvInitFFMPEG();
-        if( !icvCreateVideoWriter_FFMPEG_p ) {
-         __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "oh fuck we are here 2325");
+        if( !icvCreateVideoWriter_FFMPEG_p )
             return false;
-	}
+
         ffmpegWriter = icvCreateVideoWriter_FFMPEG_p( filename, fourcc, fps, frameSize.width, frameSize.height, isColor );
-         __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "ok we are here but 7676");
-	 if (ffmpegWriter == 0) __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "oh fuck we are here 032325");
         return ffmpegWriter != 0;
     }
 
@@ -263,12 +243,9 @@ CvVideoWriter* cvCreateVideoWriter_FFMPEG_proxy( const char* filename, int fourc
 {
     CvVideoWriter_FFMPEG_proxy* result = new CvVideoWriter_FFMPEG_proxy;
 
-    if( result->open( filename, fourcc, fps, frameSize, isColor != 0 )) {
-         __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "atleast we are here 24");
-
+    if( result->open( filename, fourcc, fps, frameSize, isColor != 0 ))
         return result;
-    }
-         __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg", "oh fuck we are here 34430");
+
     delete result;
 #if defined WIN32 || defined _WIN32
     return cvCreateVideoWriter_VFW(filename, fourcc, fps, frameSize, isColor);

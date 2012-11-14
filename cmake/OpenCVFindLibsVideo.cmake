@@ -175,12 +175,13 @@ if(WITH_FFMPEG)
 	"swresample"
 	"avfilter"
 	"avresample"
-	"postproc"
 	"log") # only for debuggon purposes now
       ocv_include_directories(${FFMPEG_INCLUDE_DIR})
     endif()
   endif(APPLE OR ANDROID)
 endif(WITH_FFMPEG)
+
+#	"postproc"
 
 # --- VideoInput ---
 if(WITH_VIDEOINPUT)

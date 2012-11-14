@@ -40,7 +40,6 @@
 //M*/
 
 #include "precomp.hpp"
-#include <android/log.h>
 
 #if defined _M_X64 && defined _MSC_VER && !defined CV_ICC
 #pragma optimize("",off)
@@ -347,7 +346,6 @@ CV_IMPL CvCapture * cvCreateFileCapture (const char * filename)
     CvCapture * result = 0;
 
     if (! result) {
-      __android_log_write(ANDROID_LOG_INFO, "cap", "atleast we are here 18");
         result = cvCreateFileCapture_FFMPEG_proxy (filename);
     }
 #ifdef HAVE_XINE
@@ -395,10 +393,9 @@ CV_IMPL CvVideoWriter* cvCreateVideoWriter( const char* filename, int fourcc,
     if(!fourcc || !fps)
         result = cvCreateVideoWriter_Images(filename);
 
-    if(!result) {
-        __android_log_write(ANDROID_LOG_INFO, "cap", "atleast we are here 42");
+    if(!result)
         result = cvCreateVideoWriter_FFMPEG_proxy (filename, fourcc, fps, frameSize, is_color);
-    }
+
 /*  #ifdef HAVE_XINE
     if(!result)
         result = cvCreateVideoWriter_XINE(filename, fourcc, fps, frameSize, is_color);

@@ -44,7 +44,6 @@
 #include <assert.h>
 #include <algorithm>
 #include <limits>
-#include <android/log.h>
 
 #if defined _MSC_VER && _MSC_VER >= 1200
 #pragma warning( disable: 4244 4510 4512 4610 )
@@ -1278,7 +1277,6 @@ void CvVideoWriter_FFMPEG::close()
 bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
                                  double fps, int width, int height, bool is_color )
 {
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an ablsolutely great place to be !!!!!!!!!!!!!!!!");
     icvInitFFMPEG_internal();
 
     CodecID codec_id = CODEC_ID_NONE;
@@ -1286,16 +1284,13 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
     double bitrate_scale = 1;
 
     close();
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 1");
 
     // check arguments
     if( !filename )
         return false;
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 2");
 
     if(fps <= 0)
         return false;
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 3");
 
     // we allow frames of odd width or height, but in this case we truncate
     // the rightmost column/the bottom row. Probably, this should be handled more elegantly,
@@ -1304,28 +1299,21 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
     height &= -2;
     if( width <= 0 || height <= 0 )
         return false;
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 4");
 
     /* auto detect the output format from the name and fourcc code. */
 
 #if LIBAVFORMAT_BUILD >= CALC_FFMPEG_VERSION(53, 2, 0)
     char buf[512];
     sprintf(buf, "::open av_guess_format(NULL, filename %s, NULL)", filename);
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", buf);
     fmt = av_guess_format(NULL, filename, NULL);
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open av_guess_format");
 #else
     fmt = guess_format(NULL, filename, NULL);
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open guess_format");
 #endif
 
 
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 5");
 
     if (!fmt)
         return false;
-
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 6");
 
     /* determine optimal pixel format */
     if (is_color) {
@@ -1334,8 +1322,6 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
     else {
         input_pix_fmt = PIX_FMT_GRAY8;
     }
-
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 7");
 
     /* Lookup codec_id for given fourcc */
 #if LIBAVCODEC_VERSION_INT<((51<<16)+(49<<8)+0)
@@ -1347,8 +1333,6 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
         return false;
 #endif
 
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 8");
-
     // alloc memory for context
 #if LIBAVFORMAT_BUILD >= CALC_FFMPEG_VERSION(53, 2, 0)
     oc = avformat_alloc_context();
@@ -1356,20 +1340,14 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
     oc = av_alloc_format_context();
 #endif
 
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 9");
-
     assert (oc);
 
     /* set file name */
     oc->oformat = fmt;
     snprintf(oc->filename, sizeof(oc->filename), "%s", filename);
 
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 10");
-
     /* set some options */
     oc->max_delay = (int)(0.7*AV_TIME_BASE);  /* This reduces buffer underrun warnings with MPEG */
-
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 11");
 
     // set a few optimal pixel formats for lossless codecs of interest..
     switch (codec_id) {
@@ -1398,8 +1376,6 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
         break;
     }
 
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 12");
-
     double bitrate = MIN(bitrate_scale*fps*width*height, (double)INT_MAX/2);
 
     // TODO -- safe to ignore output audio stream?
@@ -1423,15 +1399,11 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
 #endif
 #endif
 
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 13");
-
     /* now that all the parameters are set, we can open the audio and
      video codecs and allocate the necessary encode buffers */
     if (!video_st){
         return false;
     }
-
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 14");
 
     AVCodec *codec;
     AVCodecContext *c;
@@ -1441,8 +1413,6 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
 #else
     c = &(video_st->codec);
 #endif
-
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 15");
 
     c->codec_tag = fourcc;
     /* find the video encoder */
@@ -1457,7 +1427,6 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
                 ));
         return false;
     }
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 16");
 
     int64_t lbit_rate = (int64_t)c->bit_rate;
     lbit_rate += (bitrate / 2);
@@ -1477,8 +1446,6 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
         return false;
     }
 
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 17");
-
     outbuf = NULL;
 
     if (!(oc->oformat->flags & AVFMT_RAWPICTURE)) {
@@ -1488,8 +1455,6 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
         outbuf = (uint8_t *) av_malloc(outbuf_size);
     }
 
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 18");
-
     bool need_color_convert;
     need_color_convert = (c->pix_fmt != input_pix_fmt);
 
@@ -1498,7 +1463,6 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
     if (!picture) {
         return false;
     }
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 19");
 
     /* if the output format is not our input format, then a temporary
    picture of the input format is needed too. It is then converted
@@ -1510,7 +1474,6 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
             return false;
         }
     }
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 20");
 
     /* open the output file, if needed */
     if (!(fmt->flags & AVFMT_NOFILE)) {
@@ -1524,9 +1487,6 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
         }
     }
 
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 21");
-
-
 #if LIBAVFORMAT_BUILD >= CALC_FFMPEG_VERSION(52, 111, 0)
     /* write the stream header, if any */
     err=avformat_write_header(oc, NULL);
@@ -1534,25 +1494,18 @@ bool CvVideoWriter_FFMPEG::open( const char * filename, int fourcc,
     err=av_write_header( oc );
 #endif
 
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an great 22");
-
     if(err < 0)
     {
-      __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an BAAAAAAAD!!!!!!!!!! ");
-
         close();
         remove(filename);
         return false;
     }
-  __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "::open is this an absolute best !!!");
 
     frame_width = width;
     frame_height = height;
     ok = true;
     return true;
 }
-
-
 
 CvCapture_FFMPEG* cvCreateFileCapture_FFMPEG( const char* filename )
 {
@@ -1599,14 +1552,11 @@ int cvRetrieveFrame_FFMPEG(CvCapture_FFMPEG* capture, unsigned char** data, int*
 CvVideoWriter_FFMPEG* cvCreateVideoWriter_FFMPEG( const char* filename, int fourcc, double fps,
                                                   int width, int height, int isColor )
 {
-    __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "trying ot creat in imple 12175");
     CvVideoWriter_FFMPEG* writer = (CvVideoWriter_FFMPEG*)malloc(sizeof(*writer));
     writer->init();
-    if( writer->open( filename, fourcc, fps, width, height, isColor != 0 )) {
-      __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "trying ot creat in impl 12175");
+    if( writer->open( filename, fourcc, fps, width, height, isColor != 0 ))
         return writer;
-    }
-   __android_log_write(ANDROID_LOG_INFO, "cap_ffmpeg_impl", "unsucessfull at openning 5175");
+
     writer->close();
     free(writer);
     return 0;
