@@ -87,7 +87,7 @@ public:
             tag != MKTAG('F', 'L', 'V', '1') )
             continue;
 
-        const string filename = "output_"+s.str()+".avi";
+        const string filename = cv::tempfile(".avi");
 
         try
         {
