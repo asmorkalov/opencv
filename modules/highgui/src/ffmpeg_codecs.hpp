@@ -60,7 +60,7 @@ extern "C" {
 #include <errno.h>
 #endif
 
-#ifdef WIN32
+#if defined(WIN32) || defined(ANDROID)
   #include <libavformat/avformat.h>
 #else
 

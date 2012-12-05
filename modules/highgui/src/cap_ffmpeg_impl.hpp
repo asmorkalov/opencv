@@ -57,7 +57,7 @@ extern "C" {
 
 #include <libavutil/mathematics.h>
 
-#ifdef WIN32
+#if defined(WIN32) || defined(ANDROID)
   #define HAVE_FFMPEG_SWSCALE 1
   #include <libavcodec/avcodec.h>
   #include <libswscale/swscale.h>
@@ -127,9 +127,6 @@ extern "C" {
     #include <unistd.h>
     #include <stdio.h>
     #include <sys/types.h>
-#ifndef ANDROID
-    #include <sys/sysctl.h>
-#endif
 #endif
 
 #ifndef MIN
