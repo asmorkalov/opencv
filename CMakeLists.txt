@@ -472,6 +472,10 @@ if (ANDROID AND NOT BUILD_ANDROID_SERVICE AND NOT BUILD_ANDROID_PACKAGE AND NOT 
   add_subdirectory(android/libinfo)
 endif()
 
+if (ANDROID AND WITH_FFMPEG)
+  add_subdirectory(3rdparty/ffmpeg)
+endif()
+
 # ----------------------------------------------------------------------------
 # Finalization: generate configuration-based files
 # ----------------------------------------------------------------------------
@@ -666,8 +670,10 @@ if(DEFINED WITH_AVFOUNDATION)
 endif(DEFINED WITH_AVFOUNDATION)
 
 if(DEFINED WITH_FFMPEG)
-  if(WIN32 OR ANDROID)
+  if(WIN32)
     status("    FFMPEG:"       WITH_FFMPEG         THEN "YES (prebuilt binaries)"                  ELSE NO)
+  elif(ANDROID)
+    status("    FFMPEG:"       WITH_FFMPEG         THEN "YES (build ffmpeg module)"                ELSE NO)
   else()
     status("    FFMPEG:"       HAVE_FFMPEG         THEN YES ELSE NO)
   endif()
