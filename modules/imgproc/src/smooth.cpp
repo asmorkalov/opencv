@@ -1102,10 +1102,10 @@ void cv::GaussianBlur( InputArray _src, OutputArray _dst, Size ksize,
         return;
     }
 
-#ifdef HAVE_TEGRA_OPTIMIZATION
-    if(sigma1 == 0 && sigma2 == 0 && tegra::gaussian(_src.getMat(), _dst.getMat(), ksize, borderType))
-        return;
-#endif
+//#ifdef HAVE_TEGRA_OPTIMIZATION
+//    if(sigma1 == 0 && sigma2 == 0 && tegra::gaussian(_src.getMat(), _dst.getMat(), ksize, borderType))
+//        return;
+//#endif
 
 #if defined HAVE_IPP && (IPP_VERSION_MAJOR >= 7)
     if( type == CV_32FC1 && sigma1 == sigma2 && ksize.width == ksize.height && sigma1 != 0.0 )
