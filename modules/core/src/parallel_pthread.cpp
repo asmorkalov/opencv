@@ -64,29 +64,13 @@ static void setCurrentThreadAffinityMask(int mask)
 {
     pid_t pid=gettid();
     int syscallres=syscall(__NR_sched_setaffinity, pid, sizeof(mask), &mask);
-    if (syscallres) {
-        int err=errno;
-        err=err;//to avoid warnings about unused variables
-        LOGE("Error in the syscall setaffinity: mask=%d=0x%x err=%d=0x%x", mask, mask, err, err);
-    }
+    if (syscallres)
+        LOGE("Error in the syscall setaffinity: mask=%d=0x%x err=%d=0x%x", mask, mask, errno, errno);
 }
-static int getCurrentThreadAffinityMask()
-{
-    pid_t pid=gettid();
-    int mask=0;
-    int syscallres=syscall(__NR_sched_getaffinity, pid, sizeof(mask), &mask);
-    if (syscallres < 0) {
-        int err=errno;
-        err=err;//to avoid warnings about unused variables
-        LOGE("Error in the syscall setaffinity: mask=%d=0x%x err=%d=0x%x", mask, mask, err, err);
-        return -1;
-    }
-    return mask;
-}
-
 
 static void initThreadManagerPoolInternals();
 static void* workcycleThreadTask(void*);
+
 class ThreadTask
 {
     public:
@@ -98,7 +82,7 @@ class ThreadTask
             const void* operation;
             cv::Range range;
 
-            TaskData(): function(NULL), operation(NULL){};
+            TaskData(): function(NULL), operation(NULL) {};
 
             TaskData(ThreadFunction f,  const void* op, const cv::Range& r)
                 : function(f), operation(op), range(r) {};
@@ -121,7 +105,6 @@ class ThreadTask
             }
         };
 
-
         enum ThreadTaskState
         {
             STATE_UNINITIALIZED=0,
@@ -135,19 +118,22 @@ class ThreadTask
         {
             LOGD("ThreadTask::run is called for thread %d -- start", id);
             td.log();
-            if (state==STATE_DESTROYED) {
+            if (state==STATE_DESTROYED)
+            {
                 LOGE("ERROR: call of method ThreadTask::run for crashed object");
                 return;
             }
             pthread_mutex_lock(&taskMutex);
             {
-                if (state==STATE_RUNNING) {
+                if (state==STATE_RUNNING)
+                {
                     LOGE("WARNING: the current thread id %d is running when the method ThreadTask::run is called --- sleeping", id);
                     pthread_cond_wait(&condTaskIsReady, &taskMutex);
                     LOGI("Method ThreadTask::run for the thread id %d is waked up by the signal condTaskIsReady", id);
                 }
 
-                if (state != STATE_SLEEPING) {
+                if (state != STATE_SLEEPING)
+                {
                     LOGE("ERROR: the current thread id %d is not in SLEEPING state when the method ThreadTask::run is passing data to it", id);
                     pthread_mutex_unlock(&taskMutex);
                     throw(std::exception());
@@ -159,35 +145,42 @@ class ThreadTask
             }
             pthread_mutex_unlock(&taskMutex);
             LOGD("ThreadTask::run is called for thread %d -- end", id);
-        };
+        }
+
         void join()
         {
             pthread_mutex_lock(&taskMutex);
             {
-                if (state != STATE_RUNNING) {
+                if (state != STATE_RUNNING)
+                {
                     pthread_mutex_unlock(&taskMutex);
                     LOGI("Warning: called the method ThreadTask::join but the thread is not in running state "
                             "(probably job is done), "
                             "thread id=%d", id);
                     return;
                 }
+
                 LOGD("the current thread id %d is running when the method ThreadTask::join is called --- sleeping", id);
                 pthread_cond_wait(&condTaskIsReady, &taskMutex);
                 LOGD("Method ThreadTask::join for the thread id %d is waked up by the signal condTaskIsReady", id);
             }
+
             pthread_mutex_unlock(&taskMutex);
         }
+
         void die()
         {
             LOGD("ThreadTask::die is called for the thread id=%d --- start", id);
-            if (state==STATE_DESTROYED) {
+            if (state==STATE_DESTROYED)
+            {
                 LOGE("ERROR: call of method ThreadTask::makeDie for crashed object");
                 return;
             }
 
             pthread_mutex_lock(&taskMutex);
             {
-                if (state==STATE_RUNNING) {
+                if (state==STATE_RUNNING)
+                {
                     LOGE("WARNING: the current thread id %d is running when the method ThreadTask::makeDie is called --- sleeping", id);
                     pthread_cond_wait(&condTaskIsReady, &taskMutex);
                     LOGI("Method ThreadTask::makeDie for the thread id %d is waked up by the signal condTaskIsReady", id);
@@ -201,12 +194,10 @@ class ThreadTask
                 pthread_cond_wait(&condTaskIsReady, &taskMutex);
                 LOGI("Method ThreadTask::makeDie for the thread id %d is waked up by the signal condTaskIsReady --- workthread is died", id);
             }
+
             pthread_mutex_unlock(&taskMutex);
             LOGD("ThreadTask::die is called for the thread id=%d --- end", id);
-        };
-
-
-
+        }
 
         ThreadTask()
             :id(-1), affinityMask(-1),
@@ -229,9 +220,8 @@ class ThreadTask
             LOGI("DESTRUCTOR END ThreadTask id=%d, state=%d", id, (int)state);
         }
 
-
     private:
-        ThreadTask(const ThreadTask& tt)
+        ThreadTask(const ThreadTask&)
         {
             LOGE("Copying ThreadTask object is prohibited");
         };
@@ -253,37 +243,42 @@ class ThreadTask
         friend void* workcycleThreadTask(void*);
         friend void initThreadManagerPoolInternals();
 
-
         void init(int _id, int _affinityMask, bool _shouldSetAffinityMask)
         {
             LOGD("ThreadTask::init for id=%d is called", _id);
-            if (state!=STATE_UNINITIALIZED) {
+            if (state!=STATE_UNINITIALIZED)
+            {
                 LOGE("ERROR: the method ThreadTask::init() is called for the task, which has been initialized");
                 throw(std::exception());//TODO: make exception
             }
+
             int res=0;
             res=pthread_mutex_init(&taskMutex, NULL);//TODO: should be attributes?
-            if (res) {
+            if (res)
+            {
                 LOGE("ERROR: error in pthread_mutex_init(&taskMutex, NULL) is %d", res);
                 state=STATE_DESTROYED;
                 return;
             }
+
             res=pthread_cond_init (&condTaskRun, NULL);//TODO: should be attributes?
-            if (res) {
+            if (res)
+            {
                 LOGE("ERROR: error pthread_cond_init (&condTaskRun, NULL) is %d", res);
                 pthread_mutex_destroy(&taskMutex);
                 state=STATE_DESTROYED;
                 return;
             }
+
             res=pthread_cond_init (&condTaskIsReady, NULL);//TODO: should be attributes?
-            if (res) {
+            if (res)
+            {
                 LOGE("ERROR: error pthread_cond_init (&condTaskRun, NULL) is %d", res);
                 pthread_cond_destroy(&condTaskRun);
                 pthread_mutex_destroy(&taskMutex);
                 state=STATE_DESTROYED;
                 return;
             }
-
 
             id=_id;
             affinityMask=_affinityMask;
@@ -298,17 +293,20 @@ class ThreadTask
 
         void workcycle()
         {
-            if (state==STATE_UNINITIALIZED) {
+            if (state==STATE_UNINITIALIZED)
+            {
                 LOGE("%%%%[%d] ERROR: the thread has not been initialized, but the ThreadTask::workcycle is called", id);
                 return;
             }
-            if (state==STATE_DESTROYED) {
+            if (state==STATE_DESTROYED)
+            {
                 LOGE("%%%%[%d] ERROR: the thread is destroyed but the ThreadTask::workcycle is called", id);
                 return;
             }
 
             //pthread_detach(pthread_self()); //ATTENTION: the threads should be joinable
-            if (shouldSetAffinityMask) {
+            if (shouldSetAffinityMask)
+            {
                 setCurrentThreadAffinityMask(affinityMask);
                 LOGD("%%%%[%d] affinityMask 0x%x is set for the thread %d", id, affinityMask, id);
             } else {
@@ -317,25 +315,30 @@ class ThreadTask
 
             LOGE1("%%%%[%d] ThreadTask --- GOING INTO THE MAIN CYCLE", id);
 
-            for(;;) {
+            for(;;)
+            {
                 LOGD("%%%%[%d] Started the next iteration of the main workcycle in the thread id=%d", id, id);
-                if (state==STATE_DESTROYED) {
+                if (state==STATE_DESTROYED)
+                {
                     LOGE("%%%%[%d] ERROR: the thread is destroyed while the ThreadTask::workcycle is not finished", id);
                     break;
                 }
                 pthread_mutex_lock(&taskMutex);
                 {
-                    if (state==STATE_DYING) {
+                    if (state==STATE_DYING)
+                    {
                         LOGW("%%%%[%d] The state of the thread %d is turned out to be STATE_DYING -- exiting the main workcycle", id, id);
                         pthread_mutex_unlock(&taskMutex);
                         break;
                     }
-                    if (state == STATE_SLEEPING) {//the main thread could run this thread just after starting
+                    if (state == STATE_SLEEPING)
+                    {//the main thread could run this thread just after starting
                         LOGW("%%%%[%d] Sleeping the thread %d to wait the signal condTaskRun in the main workcycle", id, id);
                         pthread_cond_wait(&condTaskRun, &taskMutex);
                         LOGW("%%%%[%d] Waking up the thread %d after receiving the signal condTaskRun in the main workcycle", id, id);
                     }
-                    if (state != STATE_RUNNING) {
+                    if (state != STATE_RUNNING)
+                    {
                         LOGW("%%%%[%d] WARNING: in ThreadTask::workcycle() for thread id %d: waked up after pthread_cond_wait(&condTaskRun), but state is %d",
                                 id,
                                 id, (int)state);
@@ -346,7 +349,8 @@ class ThreadTask
                     }
 
                     //state == STATE_RUNNING
-                    if (!data.isValid()) {
+                    if (!data.isValid())
+                    {
                         LOGE("%%%%[%d] ERROR: in ThreadTask::workcycle() for thread id %d: waked up after pthread_cond_wait(&condTaskRun), but data is not valid",
                                 id,
                                 id);
@@ -371,19 +375,19 @@ class ThreadTask
             }
 
             LOGE("%%%%[%d] The main cycle in ThreadTask::workcycle is finished --- dying", id);
-            if (state!=STATE_DESTROYED) {
+            if (state!=STATE_DESTROYED)
+            {
                 LOGI("%%%%[%d] Sending the signal that the ThreadTask::workcycle is finished", id);
                 pthread_mutex_lock(&taskMutex);
                 pthread_cond_signal(&condTaskIsReady);
                 pthread_mutex_unlock(&taskMutex);
-            } else {
-                LOGE("%%%%[%d] ERROR: state==STATE_DESTROYED during dying", id);
             }
+            else
+                LOGE("%%%%[%d] ERROR: state==STATE_DESTROYED during dying", id);
+
             LOGE("%%%%[%d] The ThreadTask::workcycle is finished, state=%d", id, state);
-        };
-
+        }
 };
-
 
 static void* workcycleThreadTask(void* p)
 {
@@ -391,17 +395,17 @@ static void* workcycleThreadTask(void* p)
     return NULL;
 }
 
-
 static std::vector<ThreadTask*> tasks;
 static ThreadManager::ThreadManagerParameters params;
 static bool isPoolInitialized=false;
 static pthread_mutex_t* pThreadManagerMutex=0;
+
 enum ThreadManagerState {
     STATE_THREAD_MANAGER_SLEEP=0,
     STATE_THREAD_MANAGER_RUN=1
 };
-static ThreadManagerState stateThreadManager=STATE_THREAD_MANAGER_SLEEP;
 
+static ThreadManagerState stateThreadManager=STATE_THREAD_MANAGER_SLEEP;
 
 static void initThreadManagerMutex()
 {
@@ -411,25 +415,28 @@ static void initThreadManagerMutex()
     pThreadManagerMutex=new pthread_mutex_t;
 
     int res=pthread_mutex_init(pThreadManagerMutex, NULL);
-    if (res) {
+    if (res)
+    {
         delete pThreadManagerMutex;
         pThreadManagerMutex=0;
         throw std::exception();
     }
 }
+
 static void lockThreadManagerMutex()
 {
     initThreadManagerMutex();
     pthread_mutex_lock(pThreadManagerMutex);
 }
+
 static void unlockThreadManagerMutex()
 {
-    if (pThreadManagerMutex==0) {
+    if (pThreadManagerMutex==0)
+    {
         throw std::exception();
     }
     pthread_mutex_unlock(pThreadManagerMutex);
 }
-
 
 ThreadManager::ThreadManagerParameters ThreadManager::getThreadManagerParameters()
 {
@@ -444,12 +451,14 @@ bool ThreadManager::initPool(const ThreadManagerParameters& params1)
 {
     lockThreadManagerMutex();
 
-    if (stateThreadManager != STATE_THREAD_MANAGER_SLEEP) {
+    if (stateThreadManager != STATE_THREAD_MANAGER_SLEEP)
+    {
         unlockThreadManagerMutex();
         LOGE("ERROR: initPool is called while stateThreadManager != STATE_THREAD_MANAGER_SLEEP");
         return false;
     }
-    if (isPoolInitialized) {
+    if (isPoolInitialized)
+    {
         unlockThreadManagerMutex();
         LOGE("ERROR: initPool is called, but it has been initialized");
         return false;
@@ -464,12 +473,14 @@ bool ThreadManager::initPool(const ThreadManagerParameters& params1)
 bool ThreadManager::initPool()
 {
     lockThreadManagerMutex();
-    if (stateThreadManager != STATE_THREAD_MANAGER_SLEEP) {
+    if (stateThreadManager != STATE_THREAD_MANAGER_SLEEP)
+    {
         unlockThreadManagerMutex();
         LOGE("WARNING: initPool is called while stateThreadManager != STATE_THREAD_MANAGER_SLEEP");
         return false;
     }
-    if (isPoolInitialized) {
+    if (isPoolInitialized)
+    {
         unlockThreadManagerMutex();
         LOGD("initPool is called, but it has been initialized");
         return true;
@@ -484,14 +495,16 @@ bool ThreadManager::initPool()
 static void initThreadManagerPoolInternals()
 {
     LOGD("ThreadManager::init -- start");
-    if (isPoolInitialized) {
+    if (isPoolInitialized)
+    {
         LOGD("ThreadManager::init -- pool is initialized -- return");
         return;
     }
 
     isPoolInitialized=true;
 
-    if (params.sched == ThreadManager::NO_PARALLEL) {
+    if (params.sched == ThreadManager::NO_PARALLEL)
+    {
         LOGD("ThreadManager::initPool: params.sched == NO_PARALLEL --- return");
         return;
     }
@@ -501,7 +514,8 @@ static void initThreadManagerPoolInternals()
     tasks.resize(params.sizeThreadPool);
     LOGD("ThreadManager::init -- after resizing tasks");
 
-    for(size_t i=0; i < tasks.size(); i++) {
+    for(size_t i=0; i < tasks.size(); i++)
+    {
         int proc=i % params.numProcessors;
         LOGD("ThreadManager::init -- before initializing task %d", (int)i);
         tasks[i]=new ThreadTask();
@@ -510,24 +524,27 @@ static void initThreadManagerPoolInternals()
     }
     LOGD("ThreadManager::init -- end");
 }
+
 bool ThreadManager::clearPool()
 {
     LOGD("ThreadManager::clearPool -- start");
     lockThreadManagerMutex();
-    if (! isPoolInitialized) {
+    if (! isPoolInitialized)
+    {
         unlockThreadManagerMutex();
         LOGD("ThreadManager::clearPool -- pool is not initialized -- end");
         return false;
     }
-    if (stateThreadManager != STATE_THREAD_MANAGER_SLEEP) {
+
+    if (stateThreadManager != STATE_THREAD_MANAGER_SLEEP)
+    {
         unlockThreadManagerMutex();
         LOGE("ERROR: clearPool is called while stateThreadManager != STATE_THREAD_MANAGER_SLEEP");
         return false;
     }
 
-
-
-    for(size_t i=0; i < tasks.size(); i++) {
+    for(size_t i=0; i < tasks.size(); i++)
+    {
         LOGD("ThreadManager::clear -- before making task %d to die", (int)i);
         tasks[i]->die();
         LOGD("ThreadManager::clear -- after making task %d to die", (int)i);
@@ -535,6 +552,7 @@ bool ThreadManager::clearPool()
         delete tasks[i];
         LOGD("ThreadManager::clear -- after deleting task %d", (int)i);
     }
+
     LOGD("ThreadManager::clear -- before clearing tasks");
     tasks.clear();
     LOGD("ThreadManager::clear -- after clearing tasks");
@@ -552,7 +570,8 @@ void ThreadManager::run(ThreadFunction function, const void* operation, const cv
 
 
     lockThreadManagerMutex();
-    if ( (params.sched == NO_PARALLEL) || (stateThreadManager != STATE_THREAD_MANAGER_SLEEP)) {
+    if ( (params.sched == NO_PARALLEL) || (stateThreadManager != STATE_THREAD_MANAGER_SLEEP))
+    {
         unlockThreadManagerMutex();
         LOGD("ThreadManager::run -- scheduler mode NO_PARALLEL%s", ((params.sched == NO_PARALLEL)?"":" (since stateThreadManager != STATE_THREAD_MANAGER_SLEEP)"));
         LOGD("ThreadManager::run -- before calling the operation function");
@@ -561,6 +580,7 @@ void ThreadManager::run(ThreadFunction function, const void* operation, const cv
         LOGD("ThreadManager::run -- return");
         return;
     }
+
     LOGD("ThreadManager::run -- before initializing");
     initThreadManagerPoolInternals();
     LOGD("ThreadManager::run -- after initializing");
@@ -568,7 +588,6 @@ void ThreadManager::run(ThreadFunction function, const void* operation, const cv
     stateThreadManager = STATE_THREAD_MANAGER_RUN;
 
     unlockThreadManagerMutex();
-
 
     LOGD("ThreadManager::run -- before setting variables");
     int begin = range.start;
@@ -592,18 +611,20 @@ void ThreadManager::run(ThreadFunction function, const void* operation, const cv
     LOGD("ThreadManager::run -- before running cycle");
 
     int currentBegin=begin;
-    for(int i=0; i < numThreadsToUse; i++) {
+    for(int i=0; i < numThreadsToUse; i++)
+    {
         if (currentBegin >= end) // operator '>=' is used, since [x; x) is empty for any x
             break;
 
         int curStepInGrains = grainsStep;
-        if (grainsRemainder > 0) {
+        if (grainsRemainder > 0)
+        {
             curStepInGrains+=1;
             grainsRemainder--;
         }
 
-        if (curStepInGrains == 0) {
-        }
+        if (curStepInGrains == 0)
+        {}
 
         int curStep = curStepInGrains;
 
@@ -615,19 +636,21 @@ void ThreadManager::run(ThreadFunction function, const void* operation, const cv
 
         currentBegin=currentEnd;//"+1" is not required
     }
+
     LOGD("ThreadManager::run -- after running cycle: last handled element is %d", currentBegin - 1);
     LOGD("ThreadManager::run -- before joining cycle");
-    for(int i=0; i < numThreadsToUse; i++) {
+
+    for(int i=0; i < numThreadsToUse; i++)
         tasks[i]->join();
-    }
+
     LOGD("ThreadManager::run -- after joining cycle");
     lockThreadManagerMutex();
-    if (stateThreadManager == STATE_THREAD_MANAGER_RUN) {
+    if (stateThreadManager == STATE_THREAD_MANAGER_RUN)
         stateThreadManager = STATE_THREAD_MANAGER_SLEEP;
-    } else {
+    else
         LOGE("WARNING: very strange: after joining the variable stateThreadManager has value %d instead of STATE_THREAD_MANAGER_RUN==%d",
                 (int)stateThreadManager, (int)STATE_THREAD_MANAGER_RUN);
-    }
+
     unlockThreadManagerMutex();
     LOGD("ThreadManager::run -- end");
 }

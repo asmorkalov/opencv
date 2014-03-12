@@ -3,45 +3,43 @@
 
 #ifdef HAVE_LIBPTHREAD
 
-namespace tf {
+namespace tf
+{
+
 class ThreadManager
 {
-    public:
-        enum ThreadManagerScheduler {
-            NO_PARALLEL=0,
-            SIMPLE_SCHEDULER=1
-        };
-        struct ThreadManagerParameters
-        {
-            ThreadManagerScheduler sched;
-            int sizeThreadPool;
-            int numProcessors;
-            bool shouldSetAffinityMask;
+public:
+    enum ThreadManagerScheduler
+    {
+        NO_PARALLEL=0,
+        SIMPLE_SCHEDULER=1
+    };
 
-            ThreadManagerParameters()
-                :sched(SIMPLE_SCHEDULER),
-                sizeThreadPool(4),
-                numProcessors(4),
-                shouldSetAffinityMask(false)
-            {
-            };
-        };
+    struct ThreadManagerParameters
+    {
+        ThreadManagerScheduler sched;
+        int sizeThreadPool;
+        int numProcessors;
+        bool shouldSetAffinityMask;
 
-        typedef void(*ThreadFunction)(const void* operation, const cv::Range& range);
+        ThreadManagerParameters():
+            sched(SIMPLE_SCHEDULER),
+            sizeThreadPool(4),
+            numProcessors(4),
+            shouldSetAffinityMask(false)
+        {};
+    };
 
-        static ThreadManagerParameters getThreadManagerParameters();
+    typedef void(*ThreadFunction)(const void* operation, const cv::Range& range);
 
-        static bool initPool();
-        static bool initPool(const ThreadManagerParameters& params);
-        static bool clearPool();
+    static ThreadManagerParameters getThreadManagerParameters();
 
-
-        static void run(ThreadFunction function, const void* operation, const cv::Range& range);
-
-        static void doLog(bool shouldLog);
+    static bool initPool();
+    static bool initPool(const ThreadManagerParameters& params);
+    static bool clearPool();
+    static void run(ThreadFunction function, const void* operation, const cv::Range& range);
+    static void doLog(bool shouldLog);
 };
-
-
 
 template<typename Body>
 static void __parallel_for_function(const void* operation, const cv::Range& range)
