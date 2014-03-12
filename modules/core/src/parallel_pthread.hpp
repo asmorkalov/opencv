@@ -3,39 +3,46 @@
 
 #ifdef HAVE_LIBPTHREAD
 
-namespace tf
+namespace cv
 {
 
-class ThreadManager
+class PosixThreadManager
 {
 public:
-    enum ThreadManagerScheduler
+    enum SchedulerType
     {
         NO_PARALLEL=0,
         SIMPLE_SCHEDULER=1
     };
 
-    struct ThreadManagerParameters
+    struct Parameters
     {
-        ThreadManagerScheduler sched;
+        SchedulerType scheduler;
         int sizeThreadPool;
         int numProcessors;
         bool shouldSetAffinityMask;
 
-        ThreadManagerParameters():
-            sched(SIMPLE_SCHEDULER),
-            sizeThreadPool(4),
-            numProcessors(4),
+        Parameters():
+            scheduler(SIMPLE_SCHEDULER),
+            sizeThreadPool(cv::getNumberOfCPUs()),
+            numProcessors(cv::getNumberOfCPUs()),
+            shouldSetAffinityMask(false)
+        {};
+
+        Parameters(int numThreads):
+            scheduler(SIMPLE_SCHEDULER),
+            sizeThreadPool(numThreads),
+            numProcessors(numThreads),
             shouldSetAffinityMask(false)
         {};
     };
 
     typedef void(*ThreadFunction)(const void* operation, const cv::Range& range);
 
-    static ThreadManagerParameters getThreadManagerParameters();
+    static Parameters getParameters();
 
     static bool initPool();
-    static bool initPool(const ThreadManagerParameters& params);
+    static bool initPool(const Parameters& params);
     static bool clearPool();
     static void run(ThreadFunction function, const void* operation, const cv::Range& range);
     static void doLog(bool shouldLog);
@@ -51,7 +58,7 @@ static void __parallel_for_function(const void* operation, const cv::Range& rang
 template<typename Body>
 static void parallel_for( const Body& body, const cv::Range& range )
 {
-    ThreadManager::run(__parallel_for_function<Body>, (const void*)&body, range);
+    PosixThreadManager::run(__parallel_for_function<Body>, (const void*)&body, range);
 }
 
 }

@@ -288,7 +288,7 @@ void cv::parallel_for_(const cv::Range& range, const cv::ParallelLoopBody& body,
 
 #elif defined HAVE_LIBPTHREAD
 
-        tf::parallel_for<ProxyLoopBody>(pbody, stripeRange);
+        cv::parallel_for<ProxyLoopBody>(pbody, stripeRange);
 
 #else
 
@@ -340,6 +340,10 @@ int cv::getNumThreads(void)
     return 1 + (pplScheduler == 0
                 ? Concurrency::CurrentScheduler::Get()->GetNumberOfVirtualProcessors()
                 : pplScheduler->GetNumberOfVirtualProcessors());
+
+#elif defined HAVE_LIBPTHREAD
+
+    return cv::PosixThreadManager::getParameters().sizeThreadPool;
 
 #else
 
@@ -393,6 +397,11 @@ void cv::setNumThreads( int threads )
                        Concurrency::MinConcurrency, threads-1,
                        Concurrency::MaxConcurrency, threads-1));
     }
+
+#elif defined HAVE_LIBPTHREAD
+
+    cv::PosixThreadManager::Parameters params(threads);
+    cv::PosixThreadManager::initPool(params);
 
 #endif
 }

@@ -25,7 +25,7 @@
 static bool shouldLog=false;
 #if THREADING_FRAMEWORK_LOG
     #if ANDROID && !defined(ANDROID_CONSOLE)
-        #define LOG_TAG "PTHREAD_FRAMEWORK"
+        #define LOG_TAG "cv::PosixThreadingManager"
         #define LOGD(...) ((void)__android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__))
         #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__))
         #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__))
@@ -44,7 +44,7 @@ static bool shouldLog=false;
 #endif
 
 #if ANDROID
-    #define LOG_TAG1 "PTHREAD_FRAMEWORK!"
+    #define LOG_TAG1 "cv::PosixThreadingManager!"
     #define LOGD1(...) ((void)__android_log_print(ANDROID_LOG_DEBUG, LOG_TAG1, __VA_ARGS__))
     #define LOGI1(...) ((void)__android_log_print(ANDROID_LOG_INFO, LOG_TAG1, __VA_ARGS__))
     #define LOGW1(...) ((void)__android_log_print(ANDROID_LOG_WARN, LOG_TAG1, __VA_ARGS__))
@@ -58,7 +58,6 @@ static bool shouldLog=false;
 
 using namespace std;
 using namespace cv;
-using namespace tf;
 
 static void setCurrentThreadAffinityMask(int mask)
 {
@@ -116,7 +115,6 @@ class ThreadTask
 
         void run(const TaskData& td)
         {
-            LOGD("ThreadTask::run is called for thread %d -- start", id);
             td.log();
             if (state==STATE_DESTROYED)
             {
@@ -160,9 +158,7 @@ class ThreadTask
                     return;
                 }
 
-                LOGD("the current thread id %d is running when the method ThreadTask::join is called --- sleeping", id);
                 pthread_cond_wait(&condTaskIsReady, &taskMutex);
-                LOGD("Method ThreadTask::join for the thread id %d is waked up by the signal condTaskIsReady", id);
             }
 
             pthread_mutex_unlock(&taskMutex);
@@ -170,7 +166,6 @@ class ThreadTask
 
         void die()
         {
-            LOGD("ThreadTask::die is called for the thread id=%d --- start", id);
             if (state==STATE_DESTROYED)
             {
                 LOGE("ERROR: call of method ThreadTask::makeDie for crashed object");
@@ -190,41 +185,32 @@ class ThreadTask
                 LOGI("sending the signal condTaskRun to the thread id=%d", id);
                 pthread_cond_signal(&condTaskRun);
 
-                LOGE("waiting the response from the  thread id=%d that it is died --- sleeping", id);
                 pthread_cond_wait(&condTaskIsReady, &taskMutex);
-                LOGI("Method ThreadTask::makeDie for the thread id %d is waked up by the signal condTaskIsReady --- workthread is died", id);
             }
 
             pthread_mutex_unlock(&taskMutex);
-            LOGD("ThreadTask::die is called for the thread id=%d --- end", id);
         }
 
         ThreadTask()
             :id(-1), affinityMask(-1),
             shouldSetAffinityMask(true),
             state(STATE_UNINITIALIZED)
-        {
-            LOGD("A ThreadTask is created");
-        }
+        {}
 
         virtual ~ThreadTask()
         {
             //TODO: we cannot kill the thread, pthread_cancel is not implemented on Android
             //-- how to stop it quicker and decrease the risk of crash?
             //The destructor should be called VERY ACCURATELY
-            LOGI("DESTRUCTOR START ThreadTask id=%d, state=%d", id, (int)state);
             state=STATE_DESTROYED;
             pthread_cond_destroy(&condTaskIsReady);
             pthread_cond_destroy(&condTaskRun);
             pthread_mutex_destroy(&taskMutex);
-            LOGI("DESTRUCTOR END ThreadTask id=%d, state=%d", id, (int)state);
         }
 
     private:
         ThreadTask(const ThreadTask&)
-        {
-            LOGE("Copying ThreadTask object is prohibited");
-        };
+        {};
 
     protected:
         int id;
@@ -239,13 +225,12 @@ class ThreadTask
         pthread_cond_t condTaskIsReady;
         pthread_cond_t condTaskRun;
 
-        friend class tf::ThreadManager;
+        friend class cv::PosixThreadManager;
         friend void* workcycleThreadTask(void*);
         friend void initThreadManagerPoolInternals();
 
         void init(int _id, int _affinityMask, bool _shouldSetAffinityMask)
         {
-            LOGD("ThreadTask::init for id=%d is called", _id);
             if (state!=STATE_UNINITIALIZED)
             {
                 LOGE("ERROR: the method ThreadTask::init() is called for the task, which has been initialized");
@@ -293,56 +278,35 @@ class ThreadTask
 
         void workcycle()
         {
-            if (state==STATE_UNINITIALIZED)
+            if ((state==STATE_UNINITIALIZED) || (state==STATE_DESTROYED))
             {
-                LOGE("%%%%[%d] ERROR: the thread has not been initialized, but the ThreadTask::workcycle is called", id);
-                return;
-            }
-            if (state==STATE_DESTROYED)
-            {
-                LOGE("%%%%[%d] ERROR: the thread is destroyed but the ThreadTask::workcycle is called", id);
+                LOGE("ERROR: ThreadTask::workcycle() was called in invalid state");
                 return;
             }
 
-            //pthread_detach(pthread_self()); //ATTENTION: the threads should be joinable
             if (shouldSetAffinityMask)
-            {
                 setCurrentThreadAffinityMask(affinityMask);
-                LOGD("%%%%[%d] affinityMask 0x%x is set for the thread %d", id, affinityMask, id);
-            } else {
-                LOGD("%%%%[%d] affinityMask is NOT set for the thread %d", id, id);
-            }
-
-            LOGE1("%%%%[%d] ThreadTask --- GOING INTO THE MAIN CYCLE", id);
 
             for(;;)
             {
-                LOGD("%%%%[%d] Started the next iteration of the main workcycle in the thread id=%d", id, id);
                 if (state==STATE_DESTROYED)
                 {
-                    LOGE("%%%%[%d] ERROR: the thread is destroyed while the ThreadTask::workcycle is not finished", id);
+                    LOGE("ERROR: the thread %d is destroyed while the ThreadTask::workcycle is not finished", id);
                     break;
                 }
                 pthread_mutex_lock(&taskMutex);
                 {
                     if (state==STATE_DYING)
                     {
-                        LOGW("%%%%[%d] The state of the thread %d is turned out to be STATE_DYING -- exiting the main workcycle", id, id);
                         pthread_mutex_unlock(&taskMutex);
                         break;
                     }
                     if (state == STATE_SLEEPING)
                     {//the main thread could run this thread just after starting
-                        LOGW("%%%%[%d] Sleeping the thread %d to wait the signal condTaskRun in the main workcycle", id, id);
                         pthread_cond_wait(&condTaskRun, &taskMutex);
-                        LOGW("%%%%[%d] Waking up the thread %d after receiving the signal condTaskRun in the main workcycle", id, id);
                     }
                     if (state != STATE_RUNNING)
                     {
-                        LOGW("%%%%[%d] WARNING: in ThreadTask::workcycle() for thread id %d: waked up after pthread_cond_wait(&condTaskRun), but state is %d",
-                                id,
-                                id, (int)state);
-
                         if (state != STATE_DESTROYED)
                             pthread_mutex_unlock(&taskMutex);
                         continue;
@@ -351,41 +315,31 @@ class ThreadTask
                     //state == STATE_RUNNING
                     if (!data.isValid())
                     {
-                        LOGE("%%%%[%d] ERROR: in ThreadTask::workcycle() for thread id %d: waked up after pthread_cond_wait(&condTaskRun), but data is not valid",
-                                id,
-                                id);
+                        LOGE("ERROR: in ThreadTask::workcycle() for thread id %d: waked up with invalid data", id);
                         pthread_mutex_unlock(&taskMutex);
                         break;
                     }
                 }
                 pthread_mutex_unlock(&taskMutex);
 
-                LOGD("%%%%[%d] in the main workcycle of the thread %d --- before the calling the work function", id, id);
                 (*data.function)(data.operation, data.range);
-                LOGD("%%%%[%d] in the main workcycle of the thread %d --- after the calling the work function", id, id);
 
                 pthread_mutex_lock(&taskMutex);
                 {
                     state=STATE_SLEEPING;
                     data.clear();
-                    LOGD("%%%%[%d] In the main workcycle of the thread %d --- sending the signal condTaskIsReady", id, id);
                     pthread_cond_signal(&condTaskIsReady);
                 }
                 pthread_mutex_unlock(&taskMutex);
             }
 
-            LOGE("%%%%[%d] The main cycle in ThreadTask::workcycle is finished --- dying", id);
             if (state!=STATE_DESTROYED)
             {
-                LOGI("%%%%[%d] Sending the signal that the ThreadTask::workcycle is finished", id);
+                LOGI("Sending the signal that the ThreadTask::workcycle is finished");
                 pthread_mutex_lock(&taskMutex);
                 pthread_cond_signal(&condTaskIsReady);
                 pthread_mutex_unlock(&taskMutex);
             }
-            else
-                LOGE("%%%%[%d] ERROR: state==STATE_DESTROYED during dying", id);
-
-            LOGE("%%%%[%d] The ThreadTask::workcycle is finished, state=%d", id, state);
         }
 };
 
@@ -396,11 +350,12 @@ static void* workcycleThreadTask(void* p)
 }
 
 static std::vector<ThreadTask*> tasks;
-static ThreadManager::ThreadManagerParameters params;
+static PosixThreadManager::Parameters params;
 static bool isPoolInitialized=false;
 static pthread_mutex_t* pThreadManagerMutex=0;
 
-enum ThreadManagerState {
+enum ThreadManagerState
+{
     STATE_THREAD_MANAGER_SLEEP=0,
     STATE_THREAD_MANAGER_RUN=1
 };
@@ -438,16 +393,16 @@ static void unlockThreadManagerMutex()
     pthread_mutex_unlock(pThreadManagerMutex);
 }
 
-ThreadManager::ThreadManagerParameters ThreadManager::getThreadManagerParameters()
+PosixThreadManager::Parameters PosixThreadManager::getParameters()
 {
     lockThreadManagerMutex();
-    ThreadManager::ThreadManagerParameters res=params;
+    PosixThreadManager::Parameters res=params;
     unlockThreadManagerMutex();
     return res;
 }
 
 static void initThreadManagerPoolInternals();
-bool ThreadManager::initPool(const ThreadManagerParameters& params1)
+bool PosixThreadManager::initPool(const Parameters& _params)
 {
     lockThreadManagerMutex();
 
@@ -463,14 +418,14 @@ bool ThreadManager::initPool(const ThreadManagerParameters& params1)
         LOGE("ERROR: initPool is called, but it has been initialized");
         return false;
     }
-    params=params1;
+    params = _params;
     initThreadManagerPoolInternals();
 
     unlockThreadManagerMutex();
     return true;
 }
 
-bool ThreadManager::initPool()
+bool PosixThreadManager::initPool()
 {
     lockThreadManagerMutex();
     if (stateThreadManager != STATE_THREAD_MANAGER_SLEEP)
@@ -491,48 +446,36 @@ bool ThreadManager::initPool()
     return true;
 }
 
-//Attention: the function initThreadManagerPoolInternals should be called ALWAYS inside lockThreadManagerMutex() ... unlockThreadManagerMutex()
+// Attention: the function initThreadManagerPoolInternals should be called ALWAYS
+// inside lockThreadManagerMutex() ... unlockThreadManagerMutex()
 static void initThreadManagerPoolInternals()
 {
-    LOGD("ThreadManager::init -- start");
     if (isPoolInitialized)
-    {
-        LOGD("ThreadManager::init -- pool is initialized -- return");
         return;
-    }
 
     isPoolInitialized=true;
 
-    if (params.sched == ThreadManager::NO_PARALLEL)
-    {
-        LOGD("ThreadManager::initPool: params.sched == NO_PARALLEL --- return");
+    if (params.scheduler == PosixThreadManager::NO_PARALLEL)
         return;
-    }
 
-
-    LOGD("ThreadManager::init -- before resizing tasks");
     tasks.resize(params.sizeThreadPool);
-    LOGD("ThreadManager::init -- after resizing tasks");
 
     for(size_t i=0; i < tasks.size(); i++)
     {
         int proc=i % params.numProcessors;
-        LOGD("ThreadManager::init -- before initializing task %d", (int)i);
         tasks[i]=new ThreadTask();
         tasks[i]->init(i, 1 << proc, params.shouldSetAffinityMask);
-        LOGD("ThreadManager::init -- after initializing task %d", (int)i);
     }
-    LOGD("ThreadManager::init -- end");
 }
 
-bool ThreadManager::clearPool()
+bool PosixThreadManager::clearPool()
 {
-    LOGD("ThreadManager::clearPool -- start");
+    LOGD("PosixThreadManager::clearPool -- start");
     lockThreadManagerMutex();
     if (! isPoolInitialized)
     {
         unlockThreadManagerMutex();
-        LOGD("ThreadManager::clearPool -- pool is not initialized -- end");
+        LOGD("PosixThreadManager::clearPool -- pool is not initialized -- end");
         return false;
     }
 
@@ -545,70 +488,50 @@ bool ThreadManager::clearPool()
 
     for(size_t i=0; i < tasks.size(); i++)
     {
-        LOGD("ThreadManager::clear -- before making task %d to die", (int)i);
         tasks[i]->die();
-        LOGD("ThreadManager::clear -- after making task %d to die", (int)i);
-        LOGD("ThreadManager::clear -- before deleting task %d", (int)i);
         delete tasks[i];
-        LOGD("ThreadManager::clear -- after deleting task %d", (int)i);
     }
 
-    LOGD("ThreadManager::clear -- before clearing tasks");
     tasks.clear();
-    LOGD("ThreadManager::clear -- after clearing tasks");
     isPoolInitialized=false;
-    LOGD("ThreadManager::clearPool -- end");
     unlockThreadManagerMutex();
+
     return true;
 }
 
-void ThreadManager::run(ThreadFunction function, const void* operation, const cv::Range& range)
+void PosixThreadManager::run(ThreadFunction function, const void* operation, const cv::Range& range)
 {
-    LOGD("ThreadManager::run -- start");
-    LOGD("ThreadManager::run : function=%x, operation=%x, range=[%d,%d):%d",
+    LOGD("PosixThreadManager::run : function=%x, operation=%x, range=[%d,%d):%d",
             (int)(intptr_t)function, (int)(intptr_t)operation, range.start, range.stop);
 
 
     lockThreadManagerMutex();
-    if ( (params.sched == NO_PARALLEL) || (stateThreadManager != STATE_THREAD_MANAGER_SLEEP))
+    if ( (params.scheduler == NO_PARALLEL) || (stateThreadManager != STATE_THREAD_MANAGER_SLEEP))
     {
         unlockThreadManagerMutex();
-        LOGD("ThreadManager::run -- scheduler mode NO_PARALLEL%s", ((params.sched == NO_PARALLEL)?"":" (since stateThreadManager != STATE_THREAD_MANAGER_SLEEP)"));
-        LOGD("ThreadManager::run -- before calling the operation function");
+        LOGD("PosixThreadManager::run -- scheduler mode NO_PARALLEL%s", ((params.scheduler == NO_PARALLEL) ? "" :
+                                                                     " (since stateThreadManager != STATE_THREAD_MANAGER_SLEEP)"));
         (*function)(operation, range);
-        LOGD("ThreadManager::run -- after calling the operation function");
-        LOGD("ThreadManager::run -- return");
+
         return;
     }
 
-    LOGD("ThreadManager::run -- before initializing");
     initThreadManagerPoolInternals();
-    LOGD("ThreadManager::run -- after initializing");
 
     stateThreadManager = STATE_THREAD_MANAGER_RUN;
 
     unlockThreadManagerMutex();
 
-    LOGD("ThreadManager::run -- before setting variables");
     int begin = range.start;
     int end = range.end;
-    LOGD("ThreadManager::run: beign=%d, end=%d", begin, end);
 
     int numGrains = (end-begin);
     if (begin + numGrains < end)
         numGrains++;
-    LOGD("ThreadManager::run: numGrains=%d", numGrains);
 
     int numThreadsToUse=params.sizeThreadPool;
-    LOGD("ThreadManager::run: numThreadsToUse=%d", numThreadsToUse);
-
     int grainsStep = numGrains / numThreadsToUse;
-    LOGD("ThreadManager::run: grainsStep=%d", grainsStep);
     int grainsRemainder = numGrains - grainsStep * numThreadsToUse;
-    LOGD("ThreadManager::run: grainsRemainder=%d", grainsRemainder);
-
-    LOGD("ThreadManager::run -- after setting variables");
-    LOGD("ThreadManager::run -- before running cycle");
 
     int currentBegin=begin;
     for(int i=0; i < numThreadsToUse; i++)
@@ -637,13 +560,13 @@ void ThreadManager::run(ThreadFunction function, const void* operation, const cv
         currentBegin=currentEnd;//"+1" is not required
     }
 
-    LOGD("ThreadManager::run -- after running cycle: last handled element is %d", currentBegin - 1);
-    LOGD("ThreadManager::run -- before joining cycle");
+    LOGD("PosixThreadManager::run -- before joining cycle");
 
     for(int i=0; i < numThreadsToUse; i++)
         tasks[i]->join();
 
-    LOGD("ThreadManager::run -- after joining cycle");
+    LOGD("PosixThreadManager::run -- after joining cycle");
+
     lockThreadManagerMutex();
     if (stateThreadManager == STATE_THREAD_MANAGER_RUN)
         stateThreadManager = STATE_THREAD_MANAGER_SLEEP;
@@ -652,10 +575,9 @@ void ThreadManager::run(ThreadFunction function, const void* operation, const cv
                 (int)stateThreadManager, (int)STATE_THREAD_MANAGER_RUN);
 
     unlockThreadManagerMutex();
-    LOGD("ThreadManager::run -- end");
 }
 
-void ThreadManager::doLog(bool _shouldLog)
+void PosixThreadManager::doLog(bool _shouldLog)
 {
     shouldLog=_shouldLog;
 }
