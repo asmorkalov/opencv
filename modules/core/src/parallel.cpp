@@ -107,6 +107,8 @@
         #include <pthread.h>
     #elif defined HAVE_CONCURRENCY
         #include <ppl.h>
+    #elif defined HAVE_LIBPTHREAD
+        #include "parallel_pthread.hpp"
     #endif
 #endif
 
@@ -120,6 +122,8 @@
 #  define CV_PARALLEL_FRAMEWORK "gcd"
 #elif defined HAVE_CONCURRENCY
 #  define CV_PARALLEL_FRAMEWORK "ms-concurrency"
+#elif defined HAVE_LIBPTHREAD
+#  define CV_PARALLEL_FRAMEWORK "pthread"
 #endif
 
 namespace cv
@@ -224,6 +228,8 @@ public:
     ~SchedPtr() { *this = 0; }
 };
 static SchedPtr pplScheduler;
+#elif defined HAVE_LIBPTHREAD
+
 #endif
 
 #endif // CV_PARALLEL_FRAMEWORK
@@ -279,6 +285,10 @@ void cv::parallel_for_(const cv::Range& range, const cv::ParallelLoopBody& body,
             Concurrency::parallel_for(stripeRange.start, stripeRange.end, pbody);
             Concurrency::CurrentScheduler::Detach();
         }
+
+#elif defined HAVE_LIBPTHREAD
+
+        tf::parallel_for<ProxyLoopBody>(pbody, stripeRange);
 
 #else
 
@@ -400,7 +410,7 @@ int cv::getThreadNum(void)
     return pix();
 #elif defined HAVE_OPENMP
     return omp_get_thread_num();
-#elif defined HAVE_GCD
+#elif defined HAVE_GCD || defined HAVE_LIBPTHREAD
     return (int)(size_t)(void*)pthread_self(); // no zero-based indexing
 #elif defined HAVE_CONCURRENCY
     return std::max(0, (int)Concurrency::Context::VirtualProcessorId()); // zero for master thread, unique number for others but not necessary 1,2,3,...

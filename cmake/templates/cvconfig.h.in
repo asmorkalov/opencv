@@ -140,6 +140,9 @@
 /* Intel Threading Building Blocks */
 #cmakedefine HAVE_TBB
 
+/* Posix threads */
+#cmakedefine HAVE_LIBPTHREAD
+
 /* TIFF codec */
 #cmakedefine HAVE_TIFF
 
