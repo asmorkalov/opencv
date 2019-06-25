@@ -88,6 +88,8 @@ extern "C" {
 
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
+#include "rtpdec.h"
+#include "rtsp.h"
 
 #ifdef __cplusplus
 }
@@ -496,6 +498,10 @@ struct CvCapture_FFMPEG
     double  get_duration_sec() const;
     double  get_fps() const;
     int     get_bitrate() const;
+
+    RTPDemuxContext* get_RTCP_context() const;
+    double  get_rtp_reception_time() const;
+    double  get_rtp_ntp_time() const;
 
     double  r2d(AVRational r) const;
     int64_t dts_to_frame_number(int64_t dts);
@@ -1217,6 +1223,11 @@ double CvCapture_FFMPEG::getProperty( int property_id ) const
         return _opencv_ffmpeg_get_sample_aspect_ratio(ic->streams[video_stream]).num;
     case CAP_PROP_SAR_DEN:
         return _opencv_ffmpeg_get_sample_aspect_ratio(ic->streams[video_stream]).den;
+    case CAP_PROP_RECEPTION_TIMESTAMP:
+        return get_rtp_reception_time();
+    case CAP_PROP_NTP_TIMESTAMP:
+        return get_rtp_ntp_time();
+
     default:
         break;
     }
@@ -1294,6 +1305,46 @@ double CvCapture_FFMPEG::dts_to_sec(int64_t dts) const
     return (double)(dts - ic->streams[video_stream]->start_time) *
         r2d(ic->streams[video_stream]->time_base);
 }
+
+RTPDemuxContext* CvCapture_FFMPEG::get_RTCP_context() const
+{
+    RTSPState* rtsp_state = (RTSPState*) ic->priv_data;
+    if(!rtsp_state)
+        return NULL;
+
+    RTSPStream* rtsp_stream = rtsp_state->rtsp_streams[0];
+    if(!rtsp_stream)
+        return NULL;
+
+    RTPDemuxContext* rtp_demux_context = (RTPDemuxContext*) rtsp_stream->transport_priv;
+
+    return rtp_demux_context;
+}
+
+double CvCapture_FFMPEG::get_rtp_reception_time() const
+{
+    RTPDemuxContext* rtp_demux_context = get_RTCP_context();
+    if(!rtp_demux_context)
+        return 0;
+
+    uint64_t time = rtp_demux_context->last_rtcp_reception_time;
+    uint32_t seconds = (uint32_t) ((time >> 32) & 0xffffffff);
+    uint32_t fraction  = (uint32_t) (time & 0xffffffff);
+    return seconds + ((double) fraction / 0xffffffff);
+}
+
+double CvCapture_FFMPEG::get_rtp_ntp_time() const
+{
+    RTPDemuxContext* rtp_demux_context = get_RTCP_context();
+    if(!rtp_demux_context)
+        return 0;
+
+    uint64_t time = rtp_demux_context->last_rtcp_ntp_time;
+    uint32_t seconds = (uint32_t) ((time >> 32) & 0xffffffff);
+    uint32_t fraction  = (uint32_t) (time & 0xffffffff);
+    return seconds + ((double) fraction / 0xffffffff);
+}
+
 
 void CvCapture_FFMPEG::seek(int64_t _frame_number)
 {

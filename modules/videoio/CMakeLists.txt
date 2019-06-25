@@ -186,7 +186,7 @@ if(TARGET ocv.3rdparty.android_mediandk)
 endif()
 
 ocv_set_module_sources(HEADERS ${videoio_ext_hdrs} ${videoio_hdrs} SOURCES ${videoio_srcs})
-ocv_module_include_directories()
+ocv_module_include_directories("${CMAKE_CURRENT_LIST_DIR}/src/ffmpeg_headers")
 ocv_create_module()
 ocv_add_accuracy_tests(${tgts})
 ocv_add_perf_tests(${tgts})

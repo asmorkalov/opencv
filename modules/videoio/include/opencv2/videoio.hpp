@@ -174,6 +174,8 @@ enum VideoCaptureProperties {
        CAP_PROP_CHANNEL       =43, //!< Video input or Channel Number (only for those cameras that support)
        CAP_PROP_AUTO_WB       =44, //!< enable/ disable auto white-balance
        CAP_PROP_WB_TEMPERATURE=45, //!< white-balance color temperature
+       CAP_PROP_RECEPTION_TIMESTAMP = 46,
+       CAP_PROP_NTP_TIMESTAMP = 47,
 #ifndef CV_DOXYGEN
        CV__CAP_PROP_LATEST
 #endif
