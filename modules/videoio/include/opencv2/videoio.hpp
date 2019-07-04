@@ -176,6 +176,8 @@ enum VideoCaptureProperties {
        CAP_PROP_WB_TEMPERATURE=45, //!< white-balance color temperature
        CAP_PROP_RECEPTION_TIMESTAMP = 46,
        CAP_PROP_NTP_TIMESTAMP = 47,
+       CAP_PROP_RTCP_TIMESTAMP = 48,
+       CAP_PROP_RTP_TIMESTAMP = 49,
 #ifndef CV_DOXYGEN
        CV__CAP_PROP_LATEST
 #endif

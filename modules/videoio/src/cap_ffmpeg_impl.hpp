@@ -502,6 +502,8 @@ struct CvCapture_FFMPEG
     RTPDemuxContext* get_RTCP_context() const;
     double  get_rtp_reception_time() const;
     double  get_rtp_ntp_time() const;
+    double  get_rtcp_time() const;
+    double  get_rtp_time() const;
 
     double  r2d(AVRational r) const;
     int64_t dts_to_frame_number(int64_t dts);
@@ -1227,6 +1229,10 @@ double CvCapture_FFMPEG::getProperty( int property_id ) const
         return get_rtp_reception_time();
     case CAP_PROP_NTP_TIMESTAMP:
         return get_rtp_ntp_time();
+    case CAP_PROP_RTCP_TIMESTAMP:
+        return get_rtcp_time();
+    case CAP_PROP_RTP_TIMESTAMP:
+        return get_rtp_time();
 
     default:
         break;
@@ -1345,6 +1351,23 @@ double CvCapture_FFMPEG::get_rtp_ntp_time() const
     return seconds + ((double) fraction / 0xffffffff);
 }
 
+double CvCapture_FFMPEG::get_rtcp_time() const
+{
+    RTPDemuxContext* rtp_demux_context = get_RTCP_context();
+    if(!rtp_demux_context)
+        return 0;
+
+    return rtp_demux_context->last_rtcp_timestamp;
+}
+
+double CvCapture_FFMPEG::get_rtp_time() const
+{
+    RTPDemuxContext* rtp_demux_context = get_RTCP_context();
+    if(!rtp_demux_context)
+        return 0;
+
+    return rtp_demux_context->timestamp;
+}
 
 void CvCapture_FFMPEG::seek(int64_t _frame_number)
 {
