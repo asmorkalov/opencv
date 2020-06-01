@@ -481,7 +481,8 @@ struct CvCapture_FFMPEG
     double getProperty(int) const;
     bool setProperty(int, double);
     bool grabFrame();
-    bool retrieveFrame(int, unsigned char** data, int* step, int* width, int* height, int* cn);
+    bool retrieveFrame(int, cv::Mat &mat);
+    void rotateFrame(cv::Mat &mat) const;
 
     void init();
 
@@ -1286,8 +1287,7 @@ bool CvCapture_FFMPEG::grabFrame()
     return valid;
 }
 
-
-bool CvCapture_FFMPEG::retrieveFrame(int, unsigned char** data, int* step, int* width, int* height, int* cn)
+bool CvCapture_FFMPEG::retrieveFrame(int, cv::Mat &mat)
 {
     if (!video_st)
         return false;
@@ -1295,12 +1295,11 @@ bool CvCapture_FFMPEG::retrieveFrame(int, unsigned char** data, int* step, int* 
     if (rawMode)
     {
         AVPacket& p = bsfc ? packet_filtered : packet;
-        *data = p.data;
-        *step = p.size;
-        *width = p.size;
-        *height = 1;
-        *cn = 1;
-        return p.data != NULL;
+        if (p.data == NULL)
+            return false;
+
+        mat = cv::Mat(1, p.size, CV_MAKETYPE(CV_8U, 1), p.data, p.size);
+        return true;
     }
 
     if (!picture->data[0])
@@ -1363,15 +1362,29 @@ bool CvCapture_FFMPEG::retrieveFrame(int, unsigned char** data, int* step, int* 
             rgb_picture.linesize
             );
 
-    *data = frame.data;
-    *step = frame.step;
-    *width = frame.width;
-    *height = frame.height;
-    *cn = frame.cn;
-
+    mat = cv::Mat(frame.height, frame.width, CV_MAKETYPE(CV_8U, frame.cn), frame.data, frame.step);
+    rotateFrame(mat);
     return true;
 }
 
+void CvCapture_FFMPEG::rotateFrame(cv::Mat &mat) const {
+    if(!rotation_auto || rotation_angle%360 == 0) {
+        return;
+    }
+
+    cv::RotateFlags flag;
+    if(rotation_angle == 90 || rotation_angle == -270) { // Rotate clockwise 90 degrees
+        flag = cv::ROTATE_90_CLOCKWISE;
+    } else if(rotation_angle == 270 || rotation_angle == -90) { // Rotate clockwise 270 degrees
+        flag = cv::ROTATE_90_COUNTERCLOCKWISE;
+    } else if(rotation_angle == 180 || rotation_angle == -180) { // Rotate clockwise 180 degrees
+        flag = cv::ROTATE_180;
+    } else { // Unsupported rotation
+        return;
+    }
+
+    cv::rotate(mat, mat, flag);
+}
 
 double CvCapture_FFMPEG::getProperty( int property_id ) const
 {
@@ -1396,9 +1409,9 @@ double CvCapture_FFMPEG::getProperty( int property_id ) const
     case CV_FFMPEG_CAP_PROP_FRAME_COUNT:
         return (double)get_total_frames();
     case CV_FFMPEG_CAP_PROP_FRAME_WIDTH:
-        return (double)frame.width;
+        return (double)((rotation_auto && rotation_angle%360) ? frame.height : frame.width);
     case CV_FFMPEG_CAP_PROP_FRAME_HEIGHT:
-        return (double)frame.height;
+        return (double)((rotation_auto && rotation_angle%360) ? frame.width : frame.height);
     case CV_FFMPEG_CAP_PROP_FPS:
         return get_fps();
     case CV_FFMPEG_CAP_PROP_FOURCC:
@@ -1444,7 +1457,7 @@ double CvCapture_FFMPEG::getProperty( int property_id ) const
         return static_cast<double>(get_bitrate());
     case CV_FFMPEG_CAP_PROP_ORIENTATION_META:
         return static_cast<double>(rotation_angle);
-    case CAP_PROP_ORIENTATION_AUTO:
+    case CV_FFMPEG_CAP_PROP_ORIENTATION_AUTO:
         return static_cast<double>(rotation_auto);
     default:
         break;
@@ -1627,7 +1640,7 @@ bool CvCapture_FFMPEG::setProperty( int property_id, double value )
         if (value == -1)
             return setRaw();
         return false;
-    case CAP_PROP_ORIENTATION_AUTO:
+    case CV_FFMPEG_CAP_PROP_ORIENTATION_AUTO:
         rotation_auto = static_cast<bool>(value);
         break;
     default:
@@ -2657,9 +2670,9 @@ int cvGrabFrame_FFMPEG(CvCapture_FFMPEG* capture)
     return capture->grabFrame();
 }
 
-int cvRetrieveFrame_FFMPEG(CvCapture_FFMPEG* capture, unsigned char** data, int* step, int* width, int* height, int* cn)
+int cvRetrieveFrame_FFMPEG(CvCapture_FFMPEG* capture, cv::Mat &mat)
 {
-    return capture->retrieveFrame(0, data, step, width, height, cn);
+    return capture->retrieveFrame(0, mat);
 }
 
 CvVideoWriter_FFMPEG* cvCreateVideoWriter_FFMPEG( const char* filename, int fourcc, double fps,
