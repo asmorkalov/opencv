@@ -497,6 +497,7 @@ struct CvCapture_FFMPEG
     double  r2d(AVRational r) const;
     int64_t dts_to_frame_number(int64_t dts);
     double  dts_to_sec(int64_t dts) const;
+    void    get_rotation_angle();
 
     AVFormatContext * ic;
     AVCodec         * avcodec;
@@ -512,6 +513,8 @@ struct CvCapture_FFMPEG
 
     int64_t frame_number, first_frame_number;
 
+    bool   rotation_auto;
+    int    rotation_angle; // valid 0, 90, 180, 270
     double eps_zero;
 /*
    'filename' contains the filename of the videosource,
@@ -559,6 +562,9 @@ void CvCapture_FFMPEG::init()
     avcodec = 0;
     frame_number = 0;
     eps_zero = 0.000025;
+
+    rotation_auto = true;
+    rotation_angle = 0;
 
 #if LIBAVFORMAT_BUILD >= CALC_FFMPEG_VERSION(52, 111, 0)
     dict = NULL;
@@ -1032,6 +1038,7 @@ bool CvCapture_FFMPEG::open( const char* _filename )
             frame.cn = 3;
             frame.step = 0;
             frame.data = NULL;
+            get_rotation_angle();
             break;
         }
     }
@@ -1435,6 +1442,10 @@ double CvCapture_FFMPEG::getProperty( int property_id ) const
         break;
     case CV_FFMPEG_CAP_PROP_BITRATE:
         return static_cast<double>(get_bitrate());
+    case CV_FFMPEG_CAP_PROP_ORIENTATION_META:
+        return static_cast<double>(rotation_angle);
+    case CAP_PROP_ORIENTATION_AUTO:
+        return static_cast<double>(rotation_auto);
     default:
         break;
     }
@@ -1511,6 +1522,14 @@ double CvCapture_FFMPEG::dts_to_sec(int64_t dts) const
 {
     return (double)(dts - ic->streams[video_stream]->start_time) *
         r2d(ic->streams[video_stream]->time_base);
+}
+
+void CvCapture_FFMPEG::get_rotation_angle()
+{
+    rotation_angle = 0;
+    AVDictionaryEntry *rotate_tag = av_dict_get(video_st->metadata, "rotate", NULL, 0);
+    if (rotate_tag != NULL)
+        rotation_angle = atoi(rotate_tag->value);
 }
 
 void CvCapture_FFMPEG::seek(int64_t _frame_number)
@@ -1608,6 +1627,9 @@ bool CvCapture_FFMPEG::setProperty( int property_id, double value )
         if (value == -1)
             return setRaw();
         return false;
+    case CAP_PROP_ORIENTATION_AUTO:
+        rotation_auto = static_cast<bool>(value);
+        break;
     default:
         return false;
     }
