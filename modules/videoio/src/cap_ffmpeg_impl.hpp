@@ -83,6 +83,8 @@ extern "C" {
 #include <libavutil/imgutils.h>
 #endif
 
+#include <libavutil/display.h>
+
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 
@@ -1539,10 +1541,18 @@ double CvCapture_FFMPEG::dts_to_sec(int64_t dts) const
 
 void CvCapture_FFMPEG::get_rotation_angle()
 {
-    rotation_angle = 0;
-    AVDictionaryEntry *rotate_tag = av_dict_get(video_st->metadata, "rotate", NULL, 0);
-    if (rotate_tag != NULL)
-        rotation_angle = atoi(rotate_tag->value);
+//     rotation_angle = 0;
+//     AVDictionaryEntry *rotate_tag = av_dict_get(video_st->metadata, "rotate", NULL, 0);
+//     if (rotate_tag != NULL)
+//         rotation_angle = atoi(rotate_tag->value);
+    int side_data_size;
+    uint8_t* side_data = av_stream_get_side_data(video_st, AV_PKT_DATA_DISPLAYMATRIX, &side_data_size);
+    if(side_data)
+    {
+        printf("Found side data\n");
+        rotation_angle = -av_display_rotation_get((int32_t*) side_data);
+        printf("Rotation angle: %d\n", rotation_angle);
+    }
 }
 
 void CvCapture_FFMPEG::seek(int64_t _frame_number)
