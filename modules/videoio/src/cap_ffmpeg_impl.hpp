@@ -83,8 +83,6 @@ extern "C" {
 #include <libavutil/imgutils.h>
 #endif
 
-#include <libavutil/display.h>
-
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 
@@ -566,11 +564,17 @@ void CvCapture_FFMPEG::init()
     frame_number = 0;
     eps_zero = 0.000025;
 
-    rotation_auto = true;
     rotation_angle = 0;
 
-#if LIBAVFORMAT_BUILD >= CALC_FFMPEG_VERSION(52, 111, 0)
+#if (LIBAVFORMAT_BUILD >= CALC_FFMPEG_VERSION(52, 111, 0))
+#if (LIBAVUTIL_BUILD >= CALC_FFMPEG_VERSION(52, 92, 100))
+    rotation_auto = true;
+#else
+    rotation_auto = false;
+#endif
     dict = NULL;
+#else
+    rotation_auto = false;
 #endif
 
     rawMode = false;
@@ -1460,7 +1464,12 @@ double CvCapture_FFMPEG::getProperty( int property_id ) const
     case CV_FFMPEG_CAP_PROP_ORIENTATION_META:
         return static_cast<double>(rotation_angle);
     case CV_FFMPEG_CAP_PROP_ORIENTATION_AUTO:
+#if ((LIBAVFORMAT_BUILD >= CALC_FFMPEG_VERSION(52, 111, 0)) && \
+     (LIBAVUTIL_BUILD >= CALC_FFMPEG_VERSION(52, 92, 100)))
         return static_cast<double>(rotation_auto);
+#else
+        return 0;
+#endif
     default:
         break;
     }
@@ -1541,18 +1550,13 @@ double CvCapture_FFMPEG::dts_to_sec(int64_t dts) const
 
 void CvCapture_FFMPEG::get_rotation_angle()
 {
-//     rotation_angle = 0;
-//     AVDictionaryEntry *rotate_tag = av_dict_get(video_st->metadata, "rotate", NULL, 0);
-//     if (rotate_tag != NULL)
-//         rotation_angle = atoi(rotate_tag->value);
-    int side_data_size;
-    uint8_t* side_data = av_stream_get_side_data(video_st, AV_PKT_DATA_DISPLAYMATRIX, &side_data_size);
-    if(side_data)
-    {
-        printf("Found side data\n");
-        rotation_angle = -av_display_rotation_get((int32_t*) side_data);
-        printf("Rotation angle: %d\n", rotation_angle);
-    }
+    rotation_angle = 0;
+#if ((LIBAVFORMAT_BUILD >= CALC_FFMPEG_VERSION(52, 111, 0)) && \
+     (LIBAVUTIL_BUILD >= CALC_FFMPEG_VERSION(52, 94, 100)))
+    AVDictionaryEntry *rotate_tag = av_dict_get(video_st->metadata, "rotate", NULL, 0);
+    if (rotate_tag != NULL)
+        rotation_angle = atoi(rotate_tag->value);
+#endif
 }
 
 void CvCapture_FFMPEG::seek(int64_t _frame_number)
@@ -1651,7 +1655,14 @@ bool CvCapture_FFMPEG::setProperty( int property_id, double value )
             return setRaw();
         return false;
     case CV_FFMPEG_CAP_PROP_ORIENTATION_AUTO:
+#if ((LIBAVFORMAT_BUILD >= CALC_FFMPEG_VERSION(52, 111, 0)) && \
+     (LIBAVUTIL_BUILD >= CALC_FFMPEG_VERSION(52, 111, 0)))
         rotation_auto = static_cast<bool>(value);
+        return true;
+#else
+        rotation_auto = 0;
+        return false;
+#endif
         break;
     default:
         return false;

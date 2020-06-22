@@ -644,7 +644,10 @@ TEST(videoio, mp4_orientation_meta_auto)
     VideoCapture cap;
     EXPECT_NO_THROW(cap.open(video_file, CAP_FFMPEG));
     ASSERT_TRUE(cap.isOpened()) << "Can't open the video: " << video_file << " with backend " << CAP_FFMPEG << std::endl;
-    ASSERT_TRUE(cap.get(CAP_PROP_ORIENTATION_AUTO));
+
+    cap.set(CAP_PROP_ORIENTATION_AUTO, true);
+    if (cap.get(CAP_PROP_ORIENTATION_AUTO) == 0)
+        throw SkipTestException("FFmpeg frame rotation metadata is not supported");
 
     Size actual;
     EXPECT_NO_THROW(actual = Size((int)cap.get(CAP_PROP_FRAME_WIDTH),
