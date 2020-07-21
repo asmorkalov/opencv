@@ -1,5 +1,7 @@
 ## OpenCV: Open Source Computer Vision Library
 
+Test branch for CI configuration!
+
 ### Resources
 
 * Homepage: <https://opencv.org>
