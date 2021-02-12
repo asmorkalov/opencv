@@ -867,6 +867,11 @@ namespace
                           OutputArray status,
                           OutputArray err = cv::noArray()) CV_OVERRIDE;
 
+        virtual String getDefaultName() const
+        {
+            return "SparsePyrLKOpticalFlow";
+        }
+
     private:
 #ifdef HAVE_OPENCL
         bool checkParam()

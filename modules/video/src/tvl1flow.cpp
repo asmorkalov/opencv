@@ -129,6 +129,11 @@ public:
     inline void setScaleStep(double val) CV_OVERRIDE { scaleStep = val; }
     inline int getMedianFiltering() const CV_OVERRIDE { return medianFiltering; }
     inline void setMedianFiltering(int val) CV_OVERRIDE { medianFiltering = val; }
+    virtual String getDefaultName() const
+    {
+        return "OpticalFlowDual_TVL1";
+    }
+
 
 protected:
     double tau;
