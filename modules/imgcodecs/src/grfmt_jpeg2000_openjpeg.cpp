@@ -327,6 +327,7 @@ opj_cparameters setupEncoderParameters(const std::vector<int>& params, const int
 {
     opj_cparameters parameters;
     opj_set_default_encoder_parameters(&parameters);
+    bool rate_is_specified = false;
     parameters.tcp_mct = numChannels >= 3 ? 1 : 0;
     for (size_t i = 0; i < params.size(); i += 2)
     {
@@ -335,9 +336,8 @@ opj_cparameters setupEncoderParameters(const std::vector<int>& params, const int
         case cv::IMWRITE_JPEG2000_COMPRESSION_X1000:
             if (params[i + 1] > 0)
             {
+                rate_is_specified = true;
                 parameters.tcp_rates[0] = 1000.f / std::min(params[i + 1], 1000);
-                parameters.tcp_numlayers = 1;
-                parameters.cp_disto_alloc = 1;
             }
             break;
         default:
@@ -345,6 +345,14 @@ opj_cparameters setupEncoderParameters(const std::vector<int>& params, const int
             break;
         }
     }
+
+    parameters.tcp_numlayers = 1;
+    parameters.cp_disto_alloc = 1;
+    if (!rate_is_specified)
+    {
+        parameters.tcp_rates[0] = 4;
+    }
+
     return parameters;
 }
 
