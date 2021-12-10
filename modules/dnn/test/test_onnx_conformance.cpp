@@ -4,6 +4,8 @@
 
 
 #include "test_precomp.hpp"
+#include <set>
+#include <string>
 #include "npy_blob.hpp"
 #include <opencv2/dnn/shape_utils.hpp>
 
@@ -1019,13 +1021,52 @@ TEST_P(Test_ONNX_conformance, Layer_Test)
     //Backend backend = ...;
     //Target target = ...;
 
+    ASSERT_FALSE(name.empty());
+
     bool checkLayersFallbacks = true;
     bool checkAccuracy = true;
 
-#include "test_onnx_conformance_layer_filter_parser.inl.hpp"
+    std::set<std::string> parser_black_list {
+        #include "test_onnx_conformance_layer_parser_blacklist.inl.hpp"
+    };
+    if(parser_black_list.find(name) != parser_black_list.end())
+    {
+        applyTestTag(CV_TEST_TAG_DNN_SKIP_PARSER, CV_TEST_TAG_DNN_SKIP_ONNX_CONFORMANCE);
+    }
+
     if (backend == DNN_BACKEND_OPENCV)
     {
-        #include "test_onnx_conformance_layer_filter__opencv.inl.hpp"
+        std::set<std::string> global_black_list {
+            #include "test_onnx_conformance_layer_filter_opencv_all_blacklist.inl.hpp"
+        };
+        if(global_black_list.find(name) != global_black_list.end())
+        {
+            applyTestTag(CV_TEST_TAG_DNN_SKIP_OPENCV_BACKEND, CV_TEST_TAG_DNN_SKIP_ONNX_CONFORMANCE);
+        }
+
+        std::set<std::string> opencl_fp16_black_list {
+            #include "test_onnx_conformance_layer_filter_opencv_ocl_fp16_blacklist.inl.hpp"
+        };
+        if((target == DNN_TARGET_OPENCL_FP16) && (opencl_fp16_black_list.find(name) != opencl_fp16_black_list.end()))
+        {
+            applyTestTag(CV_TEST_TAG_DNN_SKIP_OPENCV_BACKEND, CV_TEST_TAG_DNN_SKIP_OPENCL_FP16, CV_TEST_TAG_DNN_SKIP_ONNX_CONFORMANCE);
+        }
+
+        std::set<std::string> opencl_black_list {
+            #include "test_onnx_conformance_layer_filter_opencv_ocl_fp32_blacklist.inl.hpp"
+        };
+        if((target == DNN_TARGET_OPENCL) && (opencl_black_list.find(name) != opencl_black_list.end()))
+        {
+            applyTestTag(CV_TEST_TAG_DNN_SKIP_OPENCV_BACKEND, CV_TEST_TAG_DNN_SKIP_OPENCL, CV_TEST_TAG_DNN_SKIP_ONNX_CONFORMANCE);
+        }
+
+        std::set<std::string> cpu_black_list {
+            #include "test_onnx_conformance_layer_filter_opencv_cpu_blacklist.inl.hpp"
+        };
+        if((target == DNN_TARGET_CPU) && (cpu_black_list.find(name) != cpu_black_list.end()))
+        {
+            applyTestTag(CV_TEST_TAG_DNN_SKIP_OPENCV_BACKEND, CV_TEST_TAG_DNN_SKIP_CPU, CV_TEST_TAG_DNN_SKIP_ONNX_CONFORMANCE);
+        }
     }
 #if 0 //def HAVE_HALIDE
     else if (backend == DNN_BACKEND_HALIDE)
