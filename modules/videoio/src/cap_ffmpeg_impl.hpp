@@ -92,6 +92,8 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 
+#include "cap_ffmpeg_timestamps.h"
+
 // https://github.com/FFmpeg/FFmpeg/blob/b6af56c034759b81985f8ea094e41cbd5f7fecfb/doc/APIchanges#L602-L605
 #if LIBAVFORMAT_BUILD < CALC_FFMPEG_VERSION(58, 9, 100)
 #  define CV_FFMPEG_REGISTER
@@ -1758,6 +1760,16 @@ double CvCapture_FFMPEG::getProperty( int property_id ) const
     case CAP_PROP_STREAM_OPEN_TIME_USEC:
         //ic->start_time_realtime is in microseconds
         return ((double)ic->start_time_realtime);
+
+    case CAP_PROP_RECEPTION_TIMESTAMP:
+        return get_rtp_reception_time(ic);
+    case CAP_PROP_NTP_TIMESTAMP:
+        return get_rtp_ntp_time(ic);
+    case CAP_PROP_RTCP_TIMESTAMP:
+        return get_rtcp_time(ic);
+    case CAP_PROP_RTP_TIMESTAMP:
+        return get_rtp_time(ic);
+
     default:
         break;
     }
