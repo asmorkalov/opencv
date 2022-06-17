@@ -409,6 +409,9 @@ int main( int argc, char** argv )
         flags |= CALIB_ZERO_TANGENT_DIST;
     if ( parser.has("p") )
         flags |= CALIB_FIX_PRINCIPAL_POINT;
+
+    flags |= CALIB_RATIONAL_MODEL;
+
     flipVertical = parser.has("v");
     videofile = parser.has("V");
     if ( parser.has("o") )
@@ -588,7 +591,7 @@ int main( int argc, char** argv )
     {
         Mat view, rview, map1, map2;
         initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),
-                                getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, imageSize, 1, imageSize, 0),
+                                cameraMatrix, // getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, imageSize, 1, imageSize, 0),
                                 imageSize, CV_16SC2, map1, map2);
 
         for( i = 0; i < (int)imageList.size(); i++ )
@@ -598,10 +601,10 @@ int main( int argc, char** argv )
                 continue;
             //undistort( view, rview, cameraMatrix, distCoeffs, cameraMatrix );
             remap(view, rview, map1, map2, INTER_LINEAR);
-            imshow("Image View", rview);
-            char c = (char)waitKey();
-            if( c == 27 || c == 'q' || c == 'Q' )
-                break;
+            imwrite("undistorted/" + imageList[i] , rview);
+//            char c = (char)waitKey();
+//            if( c == 27 || c == 'q' || c == 'Q' )
+//                break;
         }
     }
 
