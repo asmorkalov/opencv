@@ -1,4 +1,4 @@
-import pdb, sys, traceback, cv as cv, numpy as np, os, json, argparse
+import pdb, sys, traceback, cv2 as cv, numpy as np, os, json, argparse
 
 def getDimBox(pts):
     return np.array([[pts[...,k].min(), pts[...,k].max()] for k in range(pts.shape[-1])])
@@ -64,18 +64,31 @@ def calibrateFromPoints(pattern_points, image_points, image_sizes, is_fisheye):
     is_fisheye: NUM_CAMERAS (bool)
     image_sizes: NUMCAMERAS x [width, height]
     """
-
     num_cameras = len(image_points)
     num_frames = len(image_points[0])
-    visibility = np.zeros((num_cameras, num_frames), dtype=bool)
+    print("num_cameras:", num_cameras)
+    print("num_frames:", num_frames)
+
+    visibility = np.zeros((num_cameras, num_frames), dtype=int)
     pattern_points_all = [pts for pts in pattern_points]
     for i in range(num_cameras):
         for j in range(num_frames):
-            visibility[i,j] = len(image_points[i][j]) != 0
+            visibility[i,j] = int(len(image_points[i][j]) != 0)
+
+    print("visibility.shape:", visibility.shape)
+    #Ks = np.array([3, 3], dtype=np.float32) * num_cameras
+    #distortions = np.array([6], dtype=np.float32) * num_cameras
 
     success, Rs, Ts, Ks, distortions, rvecs0, tvecs0, errors_per_frame, output_pairs = \
-        cv.calibrateMultiview(pattern_points_all, image_points, image_sizes, visibility,
-        is_fisheye, USE_INTRINSICS_GUESS=False)
+        cv.calibrateMultiview(objPoints=pattern_points_all,
+                              imagePoints=image_points,
+                              imageSize=image_sizes,
+                              visibility=visibility,
+                              #Ks=Ks,
+                              #distortions=distortions,
+                              is_fisheye=np.array(is_fisheye, dtype=int),
+                              USE_INTRINSICS_GUESS=False,
+                              flags_intrinsics=0)
     print('rvecs', Rs)
     print('tvecs', Ts)
     print('K', Ks)
@@ -85,10 +98,29 @@ def calibrateFromPoints(pattern_points, image_points, image_sizes, is_fisheye):
     visibility_idxs = np.stack(np.where(visibility))
     plotCamerasPosition(Rs, Ts, image_sizes)
     def plot(cam_idx, frame_idx):
-        plotProjection(image_points[cam_idx,frame_idx], pattern_points, rvecs0[frame_idx], 
+        plotProjection(image_points[cam_idx,frame_idx], pattern_points, rvecs0[frame_idx],
             tvecs0[frame_idx], Rs[cam_idx], Ts[cam_idx], Ks[cam_idx], distortions[cam_idx], is_fisheye[cam_idx], image_sizes[cam_idx])
     plot(visibility_idxs[0,0], visibility[0,1])
     plt.show()
+
+def chessboard_points(grid_size, dist_m):
+    pattern = np.zeros((grid_size[0]*grid_size[1],3), np.float32)
+    pattern[:,:2] = np.mgrid[0:grid_size[0],0:grid_size[1]].T.reshape(-1,2)*dist_m # only for (x,y,z=0)
+
+
+def circles_grid_points(grid_size, dist_m):
+    pattern = []
+    for i in range(grid_size[0]):
+        for j in range(grid_size[1]):
+            pattern.append([j*dist_m, i*dist_m, 0]);
+    return np.array(pattern, dtype=np.float32)
+
+def asym_circles_grid_points(grid_size, dist_m):
+    pattern = []
+    for i in range(grid_size[0]):
+        for j in range(grid_size[1]):
+            pattern.append([(2*j + i % 2)*dist_m, i*dist_m, 0]);
+    return np.array(pattern, dtype=np.float32)
 
 def calibrateFromImages(files_with_images, grid_size, pattern_type, is_fisheye, dist_m):
     """
@@ -98,11 +130,14 @@ def calibrateFromImages(files_with_images, grid_size, pattern_type, is_fisheye, 
     is_fisheye: NUM_CAMERAS (bool)
     """
     if pattern_type.lower() == 'checkerboard':
-        pattern = np.zeros((grid_size[0]*grid_size[1],3), np.float32)
-        pattern[:,:2] = np.mgrid[0:grid_size[0],0:grid_size[1]].T.reshape(-1,2)*dist_m # only for (x,y,z=0)
+        pattern = chessboard_points(grid_size, dist_m)
+    elif pattern_type.lower() == 'circles':
+        pattern = circles_grid_points(grid_size, dist_m)
+    elif pattern_type.lower() == 'acircles':
+        pattern = asym_circles_grid_points(grid_size, dist_m)
     else:
         raise "Pattern type is not implemented!"
-    pdb.set_trace()
+
     assert len(files_with_images) == len(is_fisheye) and len(grid_size) == 2
     image_points_cameras = []
     image_sizes = []
@@ -112,28 +147,38 @@ def calibrateFromImages(files_with_images, grid_size, pattern_type, is_fisheye, 
         image_points_camera = []
         img_size = None
         for img_name in images_names:
+            img_name = img_name.strip("\n")
             assert os.path.exists(img_name)
             img = cv.imread(img_name)
             if img_size is None:
                 img_size = img.shape[:2][::-1]
-            gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-            window = (11,11)
-            scale = 1000.0 / max(img.shape[0], img.shape[1])
-            if scale < 1.0:
-                ret, corners = cv.findChessboardCorners(
-                    cv.resize(gray, (int(scale * gray.shape[1]), int(scale * gray.shape[0])),
-                    interpolation=cv.INTER_AREA), grid_size, None)
-                corners /= scale
-                # increase refinement window for the original image resolution
-                window = (16, 16)
-            else:
-                ret, corners = cv.findChessboardCorners(gray, grid_size, None)
 
-            if ret:
-                corners2 = cv.cornerSubPix(gray, corners, window, (-1,-1), criteria)
-                image_points_camera.append([corners2])
-            else:
-                image_points_camera.append([])
+            if pattern_type.lower() == 'checkerboard':
+                gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+                window = (11,11)
+                ret, corners = cv.findChessboardCorners(gray, grid_size, None)
+                if ret:
+                    corners2 = cv.cornerSubPix(gray, corners, window, (-1,-1), criteria)
+                    image_points_camera.append([corners2])
+                else:
+                    image_points_camera.append([])
+            elif pattern_type.lower() == 'circles':
+                ret, corners = cv.findCirclesGrid(img, patternSize=grid_size, flags=cv.CALIB_CB_SYMMETRIC_GRID);
+                if ret:
+                    image_points_camera.append([corners])
+                else:
+                    image_points_camera.append([])
+            elif pattern_type.lower() == 'acircles':
+                ret, corners = cv.findCirclesGrid(img, patternSize=grid_size, flags=cv.CALIB_CB_ASYMMETRIC_GRID);
+                if ret:
+                    new_corners = []
+                    for c in corners:
+                        new_corners.append([c[0][0], c[0][1]])
+                    image_points_camera.append(np.array(new_corners, dtype=np.float32))
+                else:
+                    print("%s No circles, skipped!" % img_name)
+                    image_points_camera.append(np.array([], dtype=np.float32))
+
         image_points_cameras.append(image_points_camera)
         image_sizes.append(img_size)
 
@@ -145,25 +190,19 @@ def calibrateFromJSON(json_file):
     calibrateFromPoints(data['object_points'], data['image_points'], data['image_sizes'], data['is_fisheye'])
 
 if __name__ == '__main__':
-    try:
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--json_file', type=str, default=None, help="json file with all data. Must have keys: 'object_points', 'image_points', 'image_sizes', 'is_fisheye'")
-        parser.add_argument('--filenames', type=str, default=None, help='files containg images, e.g., file1,file2,...,fileN for N cameras')
-        parser.add_argument('--pattern_size', type=str, default=None, help='pattern size: width,height')
-        parser.add_argument('--pattern_type', type=str, default=None, help='currently supported only checkeboard')
-        parser.add_argument('--fisheye', type=str, default=None, help='fisheye mask, e.g., 0,1,...')
-        parser.add_argument('--pattern_distance', type=float, default=None, help='distance between object / pattern points')
-        params, _ = parser.parse_known_args()
-        if params.json_file is not None:
-            calibrateFromJSON(params.json_file)
-        else:
-            if (params.fisheye is None and params.filenames is None and params.pattern_type is None and \
-                    params.pattern_size is None and params.pattern_distance is None):
-                assert False and 'Either json file or all other parameters must be set'
-            calibrateFromImages(params.filenames.split(','), [int(v) for v in params.pattern_size.split(',')], 
-                params.pattern_type, [bool(int(v)) for v in params.fisheye.split(',')], params.pattern_distance)
-
-    except:
-        extype, value, tb = sys.exc_info()
-        traceback.print_exc()
-        pdb.post_mortem(tb)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--json_file', type=str, default=None, help="json file with all data. Must have keys: 'object_points', 'image_points', 'image_sizes', 'is_fisheye'")
+    parser.add_argument('--filenames', type=str, default=None, help='files containg images, e.g., file1,file2,...,fileN for N cameras')
+    parser.add_argument('--pattern_size', type=str, default=None, help='pattern size: width,height')
+    parser.add_argument('--pattern_type', type=str, default=None, help='currently supported: checkeboard, circles, acircles')
+    parser.add_argument('--fisheye', type=str, default=None, help='fisheye mask, e.g., 0,1,...')
+    parser.add_argument('--pattern_distance', type=float, default=None, help='distance between object / pattern points')
+    params, _ = parser.parse_known_args()
+    if params.json_file is not None:
+        calibrateFromJSON(params.json_file)
+    else:
+        if (params.fisheye is None and params.filenames is None and params.pattern_type is None and \
+                params.pattern_size is None and params.pattern_distance is None):
+            assert False and 'Either json file or all other parameters must be set'
+        calibrateFromImages(params.filenames.split(','), [int(v) for v in params.pattern_size.split(',')],
+            params.pattern_type, [int(v) for v in params.fisheye.split(',')], params.pattern_distance)

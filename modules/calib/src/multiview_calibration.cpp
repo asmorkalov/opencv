@@ -42,6 +42,8 @@
 
 #include "precomp.hpp"
 
+#include <iostream>
+
 namespace cv {
 namespace multiview {
 class RobustFunction : public Algorithm {
@@ -71,7 +73,7 @@ static double robustWrapper (InputArray errors, const RobustFunction &fnc) {
     double robust_sum_sqr_errs = 0.0;
     for (int pt = 0; pt < (int)errs.total()*2; pt++) {
         auto sqr_err = errs_ptr[pt];
-        sqr_err *= sqr_err; 
+        sqr_err *= sqr_err;
         robust_sum_sqr_errs += fnc.getError(sqr_err);
     }
     return sqrt(robust_sum_sqr_errs);
@@ -450,6 +452,7 @@ bool calibrateMultiview (InputArrayOfArrays objPoints, const std::vector<std::ve
     CV_Assert(imageSize.size() == imagePoints.size());
     CV_Assert(visibility.rows == std::max(is_fisheye.rows(), is_fisheye.cols()));
     CV_Assert(visibility.rows == (int)imageSize.size());
+    std::cout << "objPoints: " << objPoints.rows() << "," << objPoints.cols() << std::endl;
     CV_Assert(visibility.cols == std::max(objPoints.rows(), objPoints.cols())); // equal number of frames
     CV_Assert(Rs.isMatVector() == Ts.isMatVector());
     if (USE_INTRINSICS_GUESS) {
