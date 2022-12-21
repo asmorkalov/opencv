@@ -59,7 +59,7 @@ class aruco_objdetect_test(NewOpenCVTests):
         img_marker = np.pad(img_marker, pad_width=offset, mode='constant', constant_values=255)
         gold_corners = np.array([[offset, offset],[marker_size+offset-1.0,offset],
                                  [marker_size+offset-1.0,marker_size+offset-1.0],
-                                 [offset, marker_size+offset-1.0]], dtype=np.float32)
+                                 [offset, marker_size+offset-1.0]], dtype=float)
         corners, ids, rejected = aruco_detector.detectMarkers(img_marker)
 
         self.assertEqual(1, len(ids))

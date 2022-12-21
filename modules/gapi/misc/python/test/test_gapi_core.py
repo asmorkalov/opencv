@@ -163,7 +163,7 @@ try:
 
 
         def generate_random_points(self, sz):
-            arr = np.random.random(sz).astype(np.float32).T
+            arr = np.random.random(sz).astype(float).T
             return list(zip(*[arr[i] for i in range(sz[1])]))
 
 
