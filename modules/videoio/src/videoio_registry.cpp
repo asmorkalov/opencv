@@ -183,6 +183,10 @@ static const struct VideoBackendInfo builtin_backends[] =
     // dropped backends: MIL, TYZX
 };
 
+static const struct VideoDeprecatedBackendInfo deprecated_backends[] =
+{
+};
+
 bool sortByPriority(const VideoBackendInfo &lhs, const VideoBackendInfo &rhs)
 {
     return lhs.priority > rhs.priority;
@@ -351,6 +355,29 @@ std::vector<VideoBackendInfo> getAvailableBackends_Writer()
     return result;
 }
 
+// ignore warning till deprecated_backends array is empty
+#if defined __GNUC__
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wtype-limits"
+#endif
+#if defined __GNUC__
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wtype-limits"
+#elif defined(__clang__)
+#  pragma clang diagnostic push
+#  pragma GCC diagnostic ignored "-Wtype-limits"
+#endif
+
+bool checkDeprecatedBackend(int api) {
+    const int M = sizeof(deprecated_backends) / sizeof(deprecated_backends[0]);
+    for (size_t i = 0; i < M; i++)
+    {
+        if (deprecated_backends[i].id == api)
+            return true;
+    }
+    return false;
+}
+
 cv::String getBackendName(VideoCaptureAPIs api)
 {
     if (api == CAP_ANY)
@@ -362,8 +389,21 @@ cv::String getBackendName(VideoCaptureAPIs api)
         if (backend.id == api)
             return backend.name;
     }
+    const int M = sizeof(deprecated_backends) / sizeof(deprecated_backends[0]);
+    for (size_t i = 0; i < M; i++)
+    {
+        if (deprecated_backends[i].id == api)
+            return deprecated_backends[i].name;
+    }
+
     return cv::format("UnknownVideoAPI(%d)", (int)api);
 }
+
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#elif defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 std::vector<VideoCaptureAPIs> getBackends()
 {
