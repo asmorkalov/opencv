@@ -43,6 +43,7 @@
 #include "precomp.hpp"
 #include "fisheye.hpp"
 #include <limits>
+#include <iostream>
 
 namespace cv { namespace
 {
@@ -383,6 +384,7 @@ void cv::fisheye::undistortPoints( InputArray distorted, OutputArray undistorted
         maxCount = criteria.maxCount;
     }
 
+    std::cout << "maxCount: " << maxCount << std::endl;
 
     for(size_t i = 0; i < n; i++ )
     {
@@ -432,6 +434,11 @@ void cv::fisheye::undistortPoints( InputArray distorted, OutputArray undistorted
         // if theta has flipped, it might converge due to symmetry but on the opposite of the camera center
         // so we can check whether theta has changed the sign during the optimization
         bool theta_flipped = ((theta_d < 0 && theta > 0) || (theta_d > 0 && theta < 0));
+
+        std::cout << "converged: " << converged << std::endl;
+        std::cout << "theta_flipped: " << theta_flipped << std::endl;
+        std::cout << "theta: " << theta << std::endl;
+        std::cout << "theta_d: " << theta_d << std::endl;
 
         if ((converged || !isEps) && !theta_flipped)
         {
@@ -597,26 +604,35 @@ void cv::fisheye::estimateNewCameraMatrixForUndistortRectify(InputArray K, Input
     balance = std::min(std::max(balance, 0.0), 1.0);
 
     cv::Mat points(1, 4, CV_64FC2);
+    cv::Mat undistorted_points(1, 4, CV_64FC2);
     Vec2d* pptr = points.ptr<Vec2d>();
     pptr[0] = Vec2d(w/2, 0);
     pptr[1] = Vec2d(w, h/2);
     pptr[2] = Vec2d(w/2, h);
     pptr[3] = Vec2d(0, h/2);
 
-    fisheye::undistortPoints(points, points, K, D, R);
-    cv::Scalar center_mass = mean(points);
+    std::cout << "Input points: " << points << std::endl;
+
+    fisheye::undistortPoints(points, undistorted_points, K, D, R);
+
+     std::cout << "Undistorted points: " << undistorted_points << std::endl;
+
+    cv::Scalar center_mass = mean(undistorted_points);
     cv::Vec2d cn(center_mass.val);
 
     double aspect_ratio = (K.depth() == CV_32F) ? K.getMat().at<float >(0,0)/K.getMat().at<float> (1,1)
                                                 : K.getMat().at<double>(0,0)/K.getMat().at<double>(1,1);
 
+    std::cout << "Aspect ratio: " << aspect_ratio << std::endl;
+
+    pptr = undistorted_points.ptr<Vec2d>();
     // convert to identity ratio
     cn[1] *= aspect_ratio;
-    for(size_t i = 0; i < points.total(); ++i)
+    for(size_t i = 0; i < undistorted_points.total(); ++i)
         pptr[i][1] *= aspect_ratio;
 
     double minx = DBL_MAX, miny = DBL_MAX, maxx = -DBL_MAX, maxy = -DBL_MAX;
-    for(size_t i = 0; i < points.total(); ++i)
+    for(size_t i = 0; i < undistorted_points.total(); ++i)
     {
         miny = std::min(miny, pptr[i][1]);
         maxy = std::max(maxy, pptr[i][1]);
@@ -632,10 +648,15 @@ void cv::fisheye::estimateNewCameraMatrixForUndistortRectify(InputArray K, Input
     double fmin = std::min(f1, std::min(f2, std::min(f3, f4)));
     double fmax = std::max(f1, std::max(f2, std::max(f3, f4)));
 
+    std::cout << "balance: " << balance << std::endl;
+    std::cout << "fov_scale: " << fov_scale << std::endl;
+    std::cout << "fmax: " << fmax << ", " << "fmin: " << fmin << std::endl;
     double f = balance * fmin + (1.0 - balance) * fmax;
     f *= fov_scale > 0 ? 1.0/fov_scale : 1.0;
 
     cv::Vec2d new_f(f, f), new_c = -cn * f + Vec2d(w, h * aspect_ratio) * 0.5;
+
+    std::cout << "new_f: " << new_f << std::endl;
 
     // restore aspect ratio
     new_f[1] /= aspect_ratio;
@@ -649,6 +670,9 @@ void cv::fisheye::estimateNewCameraMatrixForUndistortRectify(InputArray K, Input
         new_f[0] *= rx;  new_f[1] *= ry;
         new_c[0] *= rx;  new_c[1] *= ry;
     }
+
+    std::cout << "new_f" << new_f << std::endl;
+    std::cout << "new_c" << new_c << std::endl;
 
     Mat(Matx33d(new_f[0], 0, new_c[0],
                 0, new_f[1], new_c[1],
