@@ -249,8 +249,10 @@ OCV_OPTION(WITH_AVIF "Enable AVIF support" OFF
 OCV_OPTION(WITH_CAP_IOS "Enable iOS video capture" ON
   VISIBLE_IF IOS
   VERIFY HAVE_CAP_IOS)
-OCV_OPTION(WITH_CAROTENE "Use NVidia carotene acceleration library for ARM platform" (NOT CV_DISABLE_OPTIMIZATION)
+OCV_OPTION(WITH_CAROTENE "Use NVidia Carotene acceleration library for ARM platform" (NOT CV_DISABLE_OPTIMIZATION)
   VISIBLE_IF (ARM OR AARCH64) AND NOT IOS)
+OCV_OPTION(WITH_FASTCV "Use Qualcomm FastCV acceleration library for ARM platform" (NOT CV_DISABLE_OPTIMIZATION)
+  VISIBLE_IF (ARM OR AARCH64) AND ANDROID)
 OCV_OPTION(WITH_CPUFEATURES "Use cpufeatures Android library" ON
   VISIBLE_IF ANDROID
   VERIFY HAVE_CPUFEATURES)
@@ -903,6 +905,13 @@ if(WITH_CAROTENE)
   endif()
 endif()
 
+if(WITH_FASTCV)
+  ocv_debug_message(STATUS "Enable FastCV acceleration")
+  if(NOT ";${OpenCV_HAL};" MATCHES ";fastcv;")
+    set(OpenCV_HAL "fastcv;${OpenCV_HAL}")
+  endif()
+endif()
+
 foreach(hal ${OpenCV_HAL})
   if(hal STREQUAL "carotene")
     if(";${CPU_BASELINE_FINAL};" MATCHES ";NEON;")
@@ -912,6 +921,10 @@ foreach(hal ${OpenCV_HAL})
     else()
       message(STATUS "Carotene: NEON is not available, disabling carotene...")
     endif()
+  elseif(hal STREQUAL "fastcv")
+    add_subdirectory(3rdparty/fastcv)
+    ocv_hal_register(FASTCV_HAL_LIBRARIES FASTCV_HAL_HEADERS FASTCV_HAL_INCLUDE_DIRS)
+    list(APPEND OpenCV_USED_HAL "fastcv (ver ${FASTCV_HAL_VERSION})")
   elseif(hal STREQUAL "openvx")
     add_subdirectory(3rdparty/openvx)
     ocv_hal_register(OPENVX_HAL_LIBRARIES OPENVX_HAL_HEADERS OPENVX_HAL_INCLUDE_DIRS)
