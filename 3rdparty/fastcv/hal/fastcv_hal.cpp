@@ -32,6 +32,13 @@ int fastcv_hal_add_8u(const uchar *a, size_t astep, const uchar *b, size_t bstep
     if (((uintptr_t)a % 16) || ((uintptr_t)b % 16) || ((uintptr_t)c % 16))
         return CV_HAL_ERROR_NOT_IMPLEMENTED;
 
+    if (h == 1)
+    {
+        astep = w*sizeof(uchar);
+        bstep = w*sizeof(uchar);
+        cstep = w*sizeof(uchar);
+    }
+
     fcvStatus status = fcvAddu8(a, w, h, astep, b, bstep, FASTCV_CONVERT_POLICY_SATURATE, c, cstep);
     if (status == FASTCV_SUCCESS)
         return CV_HAL_ERROR_OK;
