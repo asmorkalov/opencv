@@ -1,5 +1,6 @@
 package org.opencv.samples.tutorial3;
 
+import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Date;
@@ -15,6 +16,7 @@ import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 
 import android.annotation.SuppressLint;
 import android.hardware.Camera.Size;
+import android.content.Context;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -176,13 +178,18 @@ public class Tutorial3Activity extends CameraActivity implements CvCameraViewLis
     @SuppressLint("SimpleDateFormat")
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-        Log.i(TAG,"onTouch event");
+        Log.i(TAG,"onTouch event with new location");
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
         String currentDateandTime = sdf.format(new Date());
-        String fileName = Environment.getExternalStorageDirectory().getPath() +
-                               "/sample_picture_" + currentDateandTime + ".jpg";
-        mOpenCvCameraView.takePicture(fileName);
-        Toast.makeText(this, fileName + " saved", Toast.LENGTH_SHORT).show();
+        String fileName = "sample_picture_" + currentDateandTime + ".jpg";
+        try {
+            FileOutputStream imageStream = this.openFileOutput(fileName, Context.MODE_PRIVATE);
+            mOpenCvCameraView.takePicture(imageStream);
+            Toast.makeText(this, fileName + " saved", Toast.LENGTH_SHORT).show();
+        } catch (java.io.IOException e) {
+            Log.e(TAG, "Exception writing photo", e);
+            Toast.makeText(this, "Failed to save " + fileName, Toast.LENGTH_SHORT).show();
+        }
         return false;
     }
 }

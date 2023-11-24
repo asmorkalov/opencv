@@ -15,7 +15,7 @@ import android.util.Log;
 public class Tutorial3View extends JavaCameraView implements PictureCallback {
 
     private static final String TAG = "Sample::Tutorial3View";
-    private String mPictureFileName;
+    private FileOutputStream mPictureFileStream;
 
     public Tutorial3View(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -54,9 +54,9 @@ public class Tutorial3View extends JavaCameraView implements PictureCallback {
         return mCamera.getParameters().getPreviewSize();
     }
 
-    public void takePicture(final String fileName) {
+    public void takePicture(final FileOutputStream fileStream) {
         Log.i(TAG, "Taking picture");
-        this.mPictureFileName = fileName;
+        this.mPictureFileStream = fileStream;
         // Postview and jpeg are sent in the same buffers if the queue is not empty when performing a capture.
         // Clear up buffers to avoid mCamera.takePicture to be stuck because of a memory issue
         mCamera.setPreviewCallback(null);
@@ -74,14 +74,10 @@ public class Tutorial3View extends JavaCameraView implements PictureCallback {
 
         // Write the image in a file (in jpeg format)
         try {
-            FileOutputStream fos = new FileOutputStream(mPictureFileName);
-
-            fos.write(data);
-            fos.close();
-
+            mPictureFileStream.write(data);
+            mPictureFileStream.close();
         } catch (java.io.IOException e) {
             Log.e("PictureDemo", "Exception in photoCallback", e);
         }
-
     }
 }
