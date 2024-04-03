@@ -168,7 +168,9 @@ CV_EXPORTS void cmp32f(const float* src1, size_t step1, const float* src2, size_
 CV_EXPORTS void cmp64f(const double* src1, size_t step1, const double* src2, size_t step2, uchar* dst, size_t step, int width, int height, void* _cmpop);
 
 CV_EXPORTS void mul8u( const uchar* src1, size_t step1, const uchar* src2, size_t step2, uchar* dst, size_t step, int width, int height, void* scale);
+CV_EXPORTS void mul8u16u( const uchar* src1, size_t step1, const uchar* src2, size_t step2, ushort* dst, size_t step, int width, int height, void* scale);
 CV_EXPORTS void mul8s( const schar* src1, size_t step1, const schar* src2, size_t step2, schar* dst, size_t step, int width, int height, void* scale);
+CV_EXPORTS void mul8s16s( const schar* src1, size_t step1, const schar* src2, size_t step2, short* dst, size_t step, int width, int height, void* scale);
 CV_EXPORTS void mul16u( const ushort* src1, size_t step1, const ushort* src2, size_t step2, ushort* dst, size_t step, int width, int height, void* scale);
 CV_EXPORTS void mul16s( const short* src1, size_t step1, const short* src2, size_t step2, short* dst, size_t step, int width, int height, void* scale);
 CV_EXPORTS void mul32s( const int* src1, size_t step1, const int* src2, size_t step2, int* dst, size_t step, int width, int height, void* scale);
