@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <stdio.h>
 
+static bool isInitialized = false;
+
 static const char* getFastCVErrorString(fcvStatus status)
 {
     switch(status)
@@ -53,6 +55,19 @@ int fastcv_hal_add_8u(const uchar *a, size_t astep, const uchar *b, size_t bstep
 int fastcv_hal_setto_mask(uchar *dst_data, int dst_step, int dst_cols, int dst_rows,
                           const uchar* mask_data, int mask_step, uchar *value_data, int value_size)
 {
+    if (!isInitialized)
+    {
+        if (fcvSetOperationMode(FASTCV_OP_PERFORMANCE) != 0)
+        {
+            return CV_HAL_ERROR_UNKNOWN;
+        }
+        else
+        {
+            printf("operation mode switched\n");
+            isInitialized = true;
+        }
+    }
+
     // 128-bit alignment check
     if (((uintptr_t)dst_data % 16) || ((uintptr_t)mask_data % 16))
     {
