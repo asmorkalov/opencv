@@ -23,8 +23,8 @@ static const char* getFastCVErrorString(fcvStatus status)
 
 int fastcv_hal_add_8u(const uchar *a, size_t astep, const uchar *b, size_t bstep, uchar *c, size_t cstep, int w, int h)
 {
-    printf("width: %d, height: %d\n", w, h);
-    printf("astep: %zu, bstep: %zu, cstep: %zu\n", astep, bstep, cstep);
+    // printf("width: %d, height: %d\n", w, h);
+    //printf("astep: %zu, bstep: %zu, cstep: %zu\n", astep, bstep, cstep);
 
     // stride shpuld be miltiple of 8
     if ((astep % 8 != 0) || (bstep % 8 != 0) || (cstep % 8 != 0))
@@ -46,7 +46,7 @@ int fastcv_hal_add_8u(const uchar *a, size_t astep, const uchar *b, size_t bstep
         return CV_HAL_ERROR_OK;
     else
     {
-        printf("FastCV error: %s\n", getFastCVErrorString(status));
+        //printf("FastCV error: %s\n", getFastCVErrorString(status));
         return CV_HAL_ERROR_UNKNOWN;
     }
 }
@@ -71,18 +71,18 @@ int fastcv_hal_setto_mask(uchar *dst_data, int dst_step, int dst_cols, int dst_r
     // 128-bit alignment check
     if (((uintptr_t)dst_data % 16) || ((uintptr_t)mask_data % 16))
     {
-        printf("ptr %% 16 break\n");
+        //printf("ptr %% 16 break\n");
         return CV_HAL_ERROR_NOT_IMPLEMENTED;
     }
 
     // stride should be miltiple of 8
-    // if ((dst_step % 8) || (mask_step % 8))
-    // {
-    //     printf("stride %% 8 break\n");
-    //     return CV_HAL_ERROR_NOT_IMPLEMENTED;
-    // }
+    if ((dst_step % 8) || (mask_step % 8))
+    {
+        printf("stride %% 8 break\n");
+        return CV_HAL_ERROR_NOT_IMPLEMENTED;
+    }
 
-    //printf("HAL setto\n");
+    printf("HAL setto\n");
 
     switch (value_size)
     {
@@ -109,7 +109,9 @@ int fastcv_hal_setto_mask(uchar *dst_data, int dst_step, int dst_cols, int dst_r
         {
             int32_t v0, v1, v2;
             v0 = ((int32_t*)value_data)[0]; v1 = ((int32_t*)value_data)[1]; v2 = ((int32_t*)value_data)[2];
+            printf("Before fcvSetElementsc3s32\n");
             fcvSetElementsc3s32((int32_t*)dst_data, dst_cols, dst_rows, dst_step, v0, v1, v2, mask_data, mask_step);
+            printf("After fcvSetElementsc3s32\n");
             break;
         }
         case 4*4:
@@ -120,8 +122,11 @@ int fastcv_hal_setto_mask(uchar *dst_data, int dst_step, int dst_cols, int dst_r
             break;
         }
     default:
+        printf("HAL setto not implemented!\n");
         return CV_HAL_ERROR_NOT_IMPLEMENTED;
     }
+
+    printf("HAL setto done!\n");
 
     return CV_HAL_ERROR_OK;
 }
