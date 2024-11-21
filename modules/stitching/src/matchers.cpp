@@ -145,6 +145,7 @@ private:
 };
 #endif
 
+#define USE_BRUTFORCE_MATCHER 0
 
 void CpuMatcher::match(const ImageFeatures &features1, const ImageFeatures &features2, MatchesInfo& matches_info)
 {
@@ -163,6 +164,10 @@ void CpuMatcher::match(const ImageFeatures &features1, const ImageFeatures &feat
     }
     else
 #endif
+#if USE_BRUTFORCE_MATCHER
+        matcher = makePtr<BFMatcher>();
+        printf("USE_BRUTFORCE_MATCHER!!!!\n");
+#else
     {
         Ptr<flann::IndexParams> indexParams = makePtr<flann::KDTreeIndexParams>();
         Ptr<flann::SearchParams> searchParams = makePtr<flann::SearchParams>();
@@ -175,6 +180,8 @@ void CpuMatcher::match(const ImageFeatures &features1, const ImageFeatures &feat
 
         matcher = makePtr<FlannBasedMatcher>(indexParams, searchParams);
     }
+#endif
+
     std::vector< std::vector<DMatch> > pair_matches;
     MatchesSet matches;
 

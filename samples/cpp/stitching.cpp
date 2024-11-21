@@ -24,6 +24,8 @@ int main(int argc, char* argv[])
     //![stitching]
     Mat pano;
     Ptr<Stitcher> stitcher = Stitcher::create(mode);
+    stitcher->setFeaturesFinder(SIFT::create());
+    //stitcher->setSeamFinder(makePtr<detail::NoSeamFinder>());
     Stitcher::Status status = stitcher->stitch(imgs, pano);
 
     if (status != Stitcher::OK)
