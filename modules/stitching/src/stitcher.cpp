@@ -467,6 +467,15 @@ Stitcher::Status Stitcher::matchImages()
     t = getTickCount();
 #endif
     (*features_matcher_)(features_, pairwise_matches_, matching_mask_);
+    for (size_t q = 0; q < pairwise_matches_.size(); q++)
+    {
+        Mat img_matches;
+        int idx1 = pairwise_matches_[q].src_img_idx;
+        int idx2 = pairwise_matches_[q].dst_img_idx;
+        drawMatches( imgs_[idx1], features_[idx1].keypoints, imgs_[idx2], features_[idx2].keypoints, pairwise_matches_[q].matches, img_matches );
+        std::string fname = cv::format("match-%d-%d.png", idx1, idx2);
+        cv::imwrite(fname, img_matches);
+    }
     features_matcher_->collectGarbage();
     LOGLN("Pairwise matching, time: " << ((getTickCount() - t) / getTickFrequency()) << " sec");
 
