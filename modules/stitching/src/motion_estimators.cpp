@@ -44,6 +44,7 @@
 #include "opencv2/core/core_c.h"
 #include "opencv2/calib3d/calib3d_c.h"
 #include "opencv2/core/cvdef.h"
+#include "util_log.hpp"
 
 using namespace cv;
 using namespace cv::detail;
@@ -1099,7 +1100,10 @@ std::vector<int> leaveBiggestComponent(std::vector<ImageFeatures> &features,  st
             int comp1 = comps.findSetByElem(i);
             int comp2 = comps.findSetByElem(j);
             if (comp1 != comp2)
+            {
+                LOGLN("Merging " << comp1 << " and " << comp2);
                 comps.mergeSets(comp1, comp2);
+            }
         }
     }
 

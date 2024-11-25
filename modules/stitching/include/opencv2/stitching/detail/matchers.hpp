@@ -193,12 +193,12 @@ public:
     @param matches_confindece_thresh Matching confidence threshold to take the match into account.
     The threshold was determined experimentally and set to 3 by default.
      */
-    CV_WRAP BestOf2NearestMatcher(bool try_use_gpu = false, float match_conf = 0.5f, int num_matches_thresh1 = 6,
-                          int num_matches_thresh2 = 6, double matches_confindece_thresh = 2.);
+    CV_WRAP BestOf2NearestMatcher(bool try_use_gpu = false, float match_conf = 0.3f, int num_matches_thresh1 = 6,
+                          int num_matches_thresh2 = 6, double matches_confindece_thresh = 3.);
 
     CV_WRAP void collectGarbage() CV_OVERRIDE;
     CV_WRAP static Ptr<BestOf2NearestMatcher> create(bool try_use_gpu = false, float match_conf = 0.3f, int num_matches_thresh1 = 6,
-        int num_matches_thresh2 = 6, double matches_confindece_thresh = 2.);
+        int num_matches_thresh2 = 6, double matches_confindece_thresh = 3.);
 
 protected:
 
