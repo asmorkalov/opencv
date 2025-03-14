@@ -3231,6 +3231,7 @@ TEST_P(Test_ONNX_layers, TopK) {
     test("top_k");
     test("top_k_negative_axis");
     test("top_k_smallest");
+    test("top_k_ops11");
 }
 
 INSTANTIATE_TEST_CASE_P(/**/, Test_ONNX_nets, dnnBackendsAndTargets());
