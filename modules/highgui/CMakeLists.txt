@@ -125,8 +125,11 @@ elseif(HAVE_QT)
     endif()
 
     foreach(dt_dep ${qt_deps})
-      add_definitions(${Qt${QT_VERSION_MAJOR}${dt_dep}_DEFINITIONS})
-      include_directories(${Qt${QT_VERSION_MAJOR}${dt_dep}_INCLUDE_DIRS})
+      # use target prperties for Qt 6+
+      if(QT_VERSION_MAJOR LESS 6)
+        add_definitions(${Qt${QT_VERSION_MAJOR}${dt_dep}_DEFINITIONS})
+        include_directories(${Qt${QT_VERSION_MAJOR}${dt_dep}_INCLUDE_DIRS})
+      endif()
       list(APPEND HIGHGUI_LIBRARIES ${Qt${QT_VERSION_MAJOR}${dt_dep}_LIBRARIES})
     endforeach()
   else()
