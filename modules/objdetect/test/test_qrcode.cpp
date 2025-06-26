@@ -679,4 +679,33 @@ TEST(Objdetect_QRCode_detect, detect_regression_22892)
     EXPECT_EQ(corners.size(), 4U);
 }
 
+TEST(Objdetect_QRCode_detect, testKanji)
+{
+    std::string inp = "\x82\xb1\x82\xf1\x82\xc9\x82\xbf\x82\xcd\x90\xa2\x8a\x45";
+
+    cv::QRCodeEncoder::Params params;
+    params.mode = cv::QRCodeEncoder::EncodeMode::MODE_KANJI;
+    cv::Ptr<cv::QRCodeEncoder> encoder = cv::QRCodeEncoder::create(params);
+
+    cv::Mat qrcode;
+    encoder->encode(inp, qrcode);
+    cv::resize(qrcode, qrcode, cv::Size(0, 0), 2, 2, cv::INTER_NEAREST);
+
+    QRCodeDetector detector;
+    std::string output = detector.detectAndDecode(qrcode);
+    EXPECT_EQ(detector.getEncoding(), cv::QRCodeEncoder::ECI_SHIFT_JIS);
+
+    EXPECT_EQ(14, output.size());
+    for (int i = 0; i < 14; i++)
+    {
+        EXPECT_EQ(inp[i], output[i]);
+    }
+
+
+    // List < byte[] > outputs = new ArrayList< byte[] >();
+    // assertTrue(detector.detectAndDecodeBytesMulti(qrcode, outputs));
+    // assertEquals(detector.getEncoding(0), QRCodeEncoder.ECI_SHIFT_JIS);
+    // assertArrayEquals(inp, outputs.get(0));
+}
+
 }} // namespace
