@@ -234,5 +234,67 @@ INSTANTIATE_TEST_CASE_P(
     testing::Values(USAGE_DEFAULT, USAGE_ALLOCATE_HOST_MEMORY, USAGE_ALLOCATE_DEVICE_MEMORY)
 );
 
+TEST(OpenCLMultiContext, UMatDtors)
+{
+    bool useOCL = cv::ocl::useOpenCL();
+
+    if (!useOCL)
+    {
+        throw SkipTestException("OpenCL is not available / disabled");
+    }
+
+    cv::ocl::OpenCLExecutionContext current = cv::ocl::OpenCLExecutionContext::getCurrent();
+
+    std::vector<cv::ocl::PlatformInfo> platform_info;
+    cv::ocl::getPlatfomsInfo(platform_info);
+    std::vector<cv::ocl::Device> devices;
+
+    for (size_t p = 0; p <platform_info.size(); p++)
+    {
+        printf("Platform: %s\n", platform_info[p].name().c_str());
+        int dc = platform_info[p].deviceNumber();
+        for (int d = 0; d < dc; d++)
+        {
+            cv::ocl::Device device;
+            platform_info[p].getDevice(device, d);
+            printf("\tDevice: %s\n", device.name().c_str());
+            devices.push_back(device);
+        }
+    }
+
+    printf("Found %d OpenCL devices\n", (int)devices.size());
+    if (devices.size() < 2)
+    {
+        throw SkipTestException("Not enough OpenCL devices for context interop test");
+    }
+
+    std::vector<cv::ocl::OpenCLExecutionContext> contexts(devices.size());
+    std::vector<cv::UMat> buffers(devices.size());
+
+    for (int i = 0; i < static_cast<int>(devices.size()); i++)
+    {
+        printf("Device %d\n", i);
+        cv::ocl::Context ctx = cv::ocl::Context::fromDevice(devices[i]);
+        printf("\tContext created\n");
+        contexts[i] = cv::ocl::OpenCLExecutionContext::create(ctx, devices[i]);
+        printf("\tExecution Context created\n");
+        contexts[i].bind();
+        printf("\tExecution Context binded\n");
+        buffers[i] = cv::UMat(1024, 1, CV_8UC1, cv::Scalar(255));
+        printf("\tBuffer created\n");
+    }
+
+    // The buffers are destroyed in reverse order.
+    // The buffer should be desctroyed with the context it was created, but not the current one
+    for (int i = static_cast<int>(devices.size()); i >= 0; i++)
+    {
+        buffers[i].release();
+    }
+
+    buffers.clear();
+    contexts.clear();
+
+    current.bind();
+}
 
 } } // namespace opencv_test::ocl
