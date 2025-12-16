@@ -13,8 +13,7 @@ namespace opencv_test { namespace {
 // test parameter, because parameters exist during whole test program run and consume a lot of memory
 typedef std::function<cv::Ptr<cv::FeatureDetector>()> DetectorFactory;
 typedef std::function<cv::Ptr<cv::DescriptorExtractor>()> ExtractorFactory;
-typedef tuple<std::string, DetectorFactory, ExtractorFactory, float>
-    String_FeatureDetector_DescriptorExtractor_Float_t;
+typedef tuple<std::string, DetectorFactory, ExtractorFactory, float> String_FeatureDetector_DescriptorExtractor_Float_t;
 
 
 static
@@ -189,15 +188,12 @@ TEST_P(DescriptorScaleInvariance, scale)
     }
 }
 
-#undef SHOW_DEBUG_LOG
-}} // namespace
-
-namespace std {
-using namespace opencv_test;
 static inline void PrintTo(const String_FeatureDetector_DescriptorExtractor_Float_t& v, std::ostream* os)
 {
     *os << "(\"" << get<0>(v)
-        << "\", " << get<3>(v)
-        << ")";
+    << "\", " << get<3>(v)
+    << ")";
 }
-} // namespace
+
+#undef SHOW_DEBUG_LOG
+}} // namespace
