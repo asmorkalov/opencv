@@ -9,7 +9,7 @@
 
 #include "mean.simd.hpp"
 #include "mean.simd_declarations.hpp" // defines CV_CPU_DISPATCH_MODES_ALL=AVX2,...,BASELINE based on CMakeLists.txt content
-
+#include <iostream>
 
 namespace cv {
 
@@ -219,6 +219,7 @@ static bool ocl_meanStdDev( InputArray _src, OutputArray _mean, OutputArray _sdv
 
 void meanStdDev(InputArray _src, OutputArray _mean, OutputArray _sdv, InputArray _mask)
 {
+    printf("meanStdDev call\n");
     CV_INSTRUMENT_REGION();
 
     CV_Assert(!_src.empty());
@@ -346,6 +347,13 @@ void meanStdDev(InputArray _src, OutputArray _mean, OutputArray _sdv, InputArray
     }
 
     double scale = nz0 ? 1./nz0 : 0.;
+    std::cout << "scale: " << scale << std::endl;
+    for( k = 0; k < cn; k++ )
+    {
+        std::cout << "s[k]: " << s[k] << std::endl;
+        std::cout << "sq[k]: " << sq[k] << std::endl;
+    }
+
     for( k = 0; k < cn; k++ )
     {
         s[k] *= scale;

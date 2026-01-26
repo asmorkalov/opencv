@@ -1579,6 +1579,7 @@ TEST_P(ElemWiseTest, accuracy)
     RNG rng((uint64)ARITHM_RNG_SEED);
     for( testIdx = 0; testIdx < ARITHM_NTESTS; testIdx++ )
     {
+        std::cout << "Test index " << testIdx << std::endl;
         vector<int> size;
         op->getRandomSize(rng, size);
         int type = op->getRandomType(rng);
@@ -1612,6 +1613,10 @@ TEST_P(ElemWiseTest, accuracy)
         op->op(src, dst, mask);
 
         double maxErr = op->getMaxErr(depth);
+
+        std::cout << "dst: " << dst << std::endl;
+        std::cout << "dst0: " << dst0 << std::endl;
+
         ASSERT_PRED_FORMAT2(cvtest::MatComparator(maxErr, op->context), dst0, dst) << "\nsrc[0] ~ " <<
             cvtest::MatInfo(!src.empty() ? src[0] : Mat()) << "\ntestCase #" << testIdx << "\n";
     }
