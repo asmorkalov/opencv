@@ -1517,20 +1517,20 @@ struct MaskedNormL1_SIMD<uchar, int> {
                 if (mask[i]) {
                     const uchar* elem = src + i * cn;
                     int k = 0;
-                    const int vstep = VTraits<v_uint8>::vlanes();
-                    v_uint32 acc = vx_setzero_u32();
-
-                    for (; k <= cn - vstep; k += vstep) {
-                        v_uint8 s = vx_load(elem + k);
-                        v_uint16 lo16, hi16;
-                        v_expand(s, lo16, hi16);
-                        v_uint32 lo32a, lo32b, hi32a, hi32b;
-                        v_expand(lo16, lo32a, lo32b);
-                        v_expand(hi16, hi32a, hi32b);
-                        acc = v_add(acc, v_add(v_add(lo32a, lo32b), v_add(hi32a, hi32b)));
-                    }
-
-                    result += (int)v_reduce_sum(acc);
+                    // const int vstep = VTraits<v_uint8>::vlanes();
+                    // v_uint32 acc = vx_setzero_u32();
+                    //
+                    // for (; k <= cn - vstep; k += vstep) {
+                    //     v_uint8 s = vx_load(elem + k);
+                    //     v_uint16 lo16, hi16;
+                    //     v_expand(s, lo16, hi16);
+                    //     v_uint32 lo32a, lo32b, hi32a, hi32b;
+                    //     v_expand(lo16, lo32a, lo32b);
+                    //     v_expand(hi16, hi32a, hi32b);
+                    //     acc = v_add(acc, v_add(v_add(lo32a, lo32b), v_add(hi32a, hi32b)));
+                    // }
+                    //
+                    // result += (int)v_reduce_sum(acc);
 
                     for (; k < cn; k++)
                         result += elem[k];
