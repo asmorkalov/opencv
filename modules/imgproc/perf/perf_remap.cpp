@@ -2,6 +2,7 @@
 // It is subject to the license terms in the LICENSE file found in the top-level directory
 // of this distribution and at http://opencv.org/license.html.
 #include "perf_precomp.hpp"
+#include <asm-generic/errno.h>
 
 namespace opencv_test {
 
@@ -64,7 +65,14 @@ PERF_TEST_P( TestRemap, Remap,
     int runs = (sz.width <= 640) ? 3 : 1;
     TEST_CYCLE_MULTIRUN(runs) remap(src, dst, map1, map2, inter_type);
 
-    SANITY_CHECK_NOTHING();
+    if (interpolation == INTER_CUBIC)
+    {
+        SANITY_CHECK_NOTHING();
+    }
+    else
+    {
+        SANITY_CHECK(dst);
+    }
 }
 
 } // namespace
