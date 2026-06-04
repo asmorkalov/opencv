@@ -854,28 +854,30 @@ protected:
 public:
     virtual ~ALIKED();
 
-    struct CV_EXPORTS_W_SIMPLE Params
-    {
-        CV_WRAP Params();
-        CV_PROP_RW Size inputSize;              //!< Input image size for the network, default 640x640
-        CV_PROP_RW bool normalizeDescriptors;   //!< Whether to L2-normalize descriptors, default true
-        CV_PROP_RW int engine;                  //!< DNN engine type (dnn::EngineType), default ENGINE_NEW
-        CV_PROP_RW int backend;                 //!< DNN backend, default DNN_BACKEND_DEFAULT
-        CV_PROP_RW int target;                  //!< DNN target, default DNN_TARGET_CPU
-    };
-
     /** @brief Creates ALIKED from a model file path.
     @param modelPath Path to the ONNX model file.
-    @param params ALIKED parameters.
+    @param inputSize Input image size for the network, default 640x640
+    @param normalizeDescriptors Whether to L2-normalize descriptors, default true
+    @param backend DNN backend, default DNN_BACKEND_DEFAULT
+    @param target DNN target, default DNN_TARGET_CPU
     */
-    CV_WRAP static Ptr<ALIKED> create(const String& modelPath, const ALIKED::Params& params = ALIKED::Params());
+    CV_WRAP static Ptr<ALIKED> create(const String& modelPath,
+                                      Size inputSize = Size(640, 640),
+                                      bool normalizeDescriptors = true,
+                                      int backend = 0, int target = 0);
 
 #ifdef HAVE_OPENCV_DNN
     /** @brief Creates ALIKED from in-memory model data.
     @param modelData Buffer containing the model data.
-    @param params ALIKED parameters.
+    @param inputSize Input image size for the network, default 640x640
+    @param normalizeDescriptors Whether to L2-normalize descriptors, default true
+    @param backend DNN backend, default DNN_BACKEND_DEFAULT
+    @param target DNN target, default DNN_TARGET_CPU
     */
-    static Ptr<ALIKED> create(const std::vector<uchar>& modelData, const ALIKED::Params& params = ALIKED::Params());
+    CV_WRAP_AS(createFromMemory) static Ptr<ALIKED> create(const std::vector<uchar>& modelData,
+                                                           Size inputSize = Size(640, 640),
+                                                           bool normalizeDescriptors = true,
+                                                           int backend = 0, int target = 0);
 #endif
 };
 

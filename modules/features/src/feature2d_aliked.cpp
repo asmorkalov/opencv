@@ -15,42 +15,31 @@ namespace cv
 ALIKED::ALIKED() {}
 ALIKED::~ALIKED() {}
 
-ALIKED::Params::Params()
-{
-    inputSize = Size(640, 640);
-    normalizeDescriptors = true;
-#ifdef HAVE_OPENCV_DNN
-    engine = dnn::ENGINE_NEW;
-    backend = dnn::DNN_BACKEND_DEFAULT;
-    target = dnn::DNN_TARGET_CPU;
-#else
-    engine = -1;
-    backend = -1;
-    target = -1;
-#endif
-}
-
 #ifdef HAVE_OPENCV_DNN
 
 class ALIKEDImpl : public ALIKED
 {
 public:
-    ALIKEDImpl(const ALIKED::Params& _params, const String& modelPath)
-        : params(_params)
+    ALIKEDImpl(const String& modelPath, Size _inputSize,
+               bool _normalizeDescriptors, int backend, int target):
+        inputSize(_inputSize),
+        normalizeDescriptors(_normalizeDescriptors)
     {
-        net = dnn::readNet(modelPath, "", "", static_cast<dnn::EngineType>(params.engine));
+        net = dnn::readNet(modelPath, "", "");
         CV_Assert(!net.empty());
-        net.setPreferableBackend(params.backend);
-        net.setPreferableTarget(params.target);
+        net.setPreferableBackend(backend);
+        net.setPreferableTarget(target);
     }
 
-    ALIKEDImpl(const std::vector<uchar>& modelData, const ALIKED::Params& _params)
-        : params(_params)
+    ALIKEDImpl(const std::vector<uchar>& modelData, Size _inputSize,
+               bool _normalizeDescriptors, int backend, int target):
+        inputSize(_inputSize),
+        normalizeDescriptors(_normalizeDescriptors)
     {
         net = dnn::readNetFromONNX(modelData);
         CV_Assert(!net.empty());
-        net.setPreferableBackend(params.backend);
-        net.setPreferableTarget(params.target);
+        net.setPreferableBackend(backend);
+        net.setPreferableTarget(target);
     }
 
     void detectAndCompute(InputArray image, InputArray mask,
@@ -67,7 +56,8 @@ public:
 
 protected:
     dnn::Net net;
-    ALIKED::Params params;
+    Size inputSize;
+    bool normalizeDescriptors;
     ALIKEDContext lastContext;
 
     void runNetwork(InputArray image, std::vector<KeyPoint>& keypoints,
@@ -78,11 +68,10 @@ void ALIKEDImpl::runNetwork(InputArray _image, std::vector<KeyPoint>& keypoints,
                              Mat& descriptors, Mat& scores)
 {
     Mat image = _image.getMat();
-    Size inputSz = params.inputSize;
     Size origSize = image.size();
 
     // BGR->RGB conversion via swapRB=true
-    Mat blob = dnn::blobFromImage(image, 1.0/255.0, inputSz, Scalar(), /*swapRB=*/true, /*crop=*/false);
+    Mat blob = dnn::blobFromImage(image, 1.0/255.0, inputSize, Scalar(), /*swapRB=*/true, /*crop=*/false);
 
     net.setInput(blob, "image");
 
@@ -119,7 +108,7 @@ void ALIKEDImpl::runNetwork(InputArray _image, std::vector<KeyPoint>& keypoints,
     }
 
     // Optionally L2-normalize descriptors
-    if (params.normalizeDescriptors)
+    if (normalizeDescriptors)
     {
         for (int i = 0; i < N; i++)
         {
@@ -161,22 +150,28 @@ int ALIKEDImpl::descriptorType() const { return CV_32F; }
 int ALIKEDImpl::defaultNorm() const { return NORM_L2; }
 bool ALIKEDImpl::empty() const { return net.empty(); }
 
-Ptr<ALIKED> ALIKED::create(const String& modelPath, const ALIKED::Params& params)
+Ptr<ALIKED> ALIKED::create(const String& modelPath, Size inputSize,
+                           bool normalizeDescriptors, int backend, int target)
 {
-    return makePtr<ALIKEDImpl>(params, modelPath);
+    return makePtr<ALIKEDImpl>(modelPath, inputSize, normalizeDescriptors, backend, target);
 }
 
-Ptr<ALIKED> ALIKED::create(const std::vector<uchar>& modelData, const ALIKED::Params& params)
+Ptr<ALIKED> ALIKED::create(const std::vector<uchar>& modelData, Size inputSize,
+                           bool normalizeDescriptors, int backend, int target)
 {
-    return makePtr<ALIKEDImpl>(modelData, params);
+    return makePtr<ALIKEDImpl>(modelData, inputSize, normalizeDescriptors, backend, target);
 }
 
 #else  // !HAVE_OPENCV_DNN
 
-Ptr<ALIKED> ALIKED::create(const String& modelPath, const ALIKED::Params& params)
+Ptr<ALIKED> ALIKED::create(const String& modelPath, Size inputSize,
+                           bool normalizeDescriptors, int backend, int target)
 {
     CV_UNUSED(modelPath);
-    CV_UNUSED(params);
+    CV_UNUSED(inputSize);
+    CV_UNUSED(normalizeDescriptors);
+    CV_UNUSED(backend);
+    CV_UNUSED(target);
     CV_Error(cv::Error::StsNotImplemented,
              "ALIKED requires OpenCV built with opencv_dnn module!");
 }
