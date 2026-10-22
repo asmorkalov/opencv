@@ -1548,7 +1548,7 @@ template<typename R> struct TheTest
                     } else {
                         EXPECT_GE(v, F2INT_MAX);
                     }
-                }
+                };
                 SCOPED_TRACE(cv::format("overflow: i=%d, x=%g", i, xd));
                 check_big_int(saturate_cast<ILaneType>(cvRound(x)), roundO[i]);
                 check_big_int(saturate_cast<ILaneType>(cvTrunc(x)), truncO[i]);
