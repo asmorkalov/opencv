@@ -1543,7 +1543,7 @@ template<typename R> struct TheTest
                 // NOTE: Armv7 scalar cvRound and vector v_round may produce different result on the range edges and clams differently
                 auto check_big_int = [&](int v0, int v) {
                     constexpr int F2INT_MAX = 2147483520;
-                    if (v0 <= F2INT_MAX) {
+                    if (v0 < F2INT_MAX) {
                         EXPECT_EQ(v0, v);
                     } else {
                         EXPECT_GE(v, F2INT_MAX);
